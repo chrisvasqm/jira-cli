@@ -67,22 +67,28 @@ export class HttpClient {
     if (body !== undefined) init.body = JSON.stringify(body);
 
     for (let attempt = 0; ; attempt++) {
-      let res: Response;
-      try {
-        res = await fetch(url, init);
-      } catch (err) {
-        if (!idempotent || attempt >= this.retry.maxRetries) {
-          throw new CliError("NETWORK_ERROR", `Could not reach ${this.creds.baseUrl}`, String(err));
-        }
+      const canRetry = idempotent && attempt < this.retry.maxRetries;
+      const res = await this.attempt(url, init, canRetry);
+      if (res === undefined) {
         await sleep(this.backoff(attempt));
         continue;
       }
-
-      if (idempotent && RETRYABLE_STATUS.has(res.status) && attempt < this.retry.maxRetries) {
+      if (canRetry && RETRYABLE_STATUS.has(res.status)) {
+        await res.body?.cancel();
         await sleep(this.backoff(attempt, res.headers.get("Retry-After")));
         continue;
       }
       return this.decode<T>(res, method, path);
+    }
+  }
+
+  /** Returns undefined when the network failed and a retry is allowed. */
+  private async attempt(url: string, init: RequestInit, canRetry: boolean): Promise<Response | undefined> {
+    try {
+      return await fetch(url, init);
+    } catch (err) {
+      if (canRetry) return undefined;
+      throw new CliError("NETWORK_ERROR", `Could not reach ${this.creds.baseUrl}`, String(err));
     }
   }
 
@@ -99,7 +105,14 @@ export class HttpClient {
     }
     const text = await res.text();
     if (text.trim() === "") return undefined as T;
-    return JSON.parse(text) as T;
+    const parsed = parseJson(text);
+    if (parsed === undefined) {
+      throw new CliError(
+        "INVALID_RESPONSE",
+        `${method} ${path} did not return JSON. Is ${this.creds.baseUrl} a Jira site?`,
+      );
+    }
+    return parsed as T;
   }
 
   private backoff(attempt: number, retryAfter?: string | null): number {

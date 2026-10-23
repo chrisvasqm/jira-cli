@@ -60,9 +60,11 @@ export function saveConfig(path: string, config: Config): void {
 
 /** true = ignored, false = tracked by git and not ignored, undefined = not a git repo or git missing. */
 export function isGitignored(configPath: string): boolean | undefined {
-  const result = spawnSync("git", ["check-ignore", "-q", configPath], { cwd: dirname(configPath), stdio: "ignore" });
-  if (result.error || result.status === null || result.status > 1) return undefined;
+  const result = spawnSync("git", ["check-ignore", "-q", configPath], {
+    cwd: dirname(configPath),
+    stdio: "ignore",
+  });
   if (result.status === 0) return true;
-  const inRepo = spawnSync("git", ["rev-parse", "--is-inside-work-tree"], { cwd: dirname(configPath), stdio: "ignore" });
-  return inRepo.status === 0 ? false : undefined;
+  if (result.status === 1) return false;
+  return undefined;
 }

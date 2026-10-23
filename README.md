@@ -7,6 +7,7 @@ A small command-line tool for working with Jira from the terminal as an alternat
 ```sh
 pnpm install
 pnpm dev setup      # prompts for Jira URL, email, API token, board
+pnpm check          # typecheck + build + lint + format
 ```
 
 `setup` writes `.jira-cli.json` in the current directory (file mode 600). Keep it out of git; the command warns when it is not in `.gitignore`. Each directory can hold its own config, so different projects can point at different Jira sites or boards. `--global` writes `~/.config/jira-cli/config.json` as a fallback.

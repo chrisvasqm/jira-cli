@@ -28,7 +28,10 @@ function renderDetails(details: unknown): string | undefined {
   if (typeof details === "string") return details;
   if (typeof details === "object" && "errorMessages" in details) {
     const jira = details as { errorMessages?: string[]; errors?: Record<string, string> };
-    const lines = [...(jira.errorMessages ?? []), ...Object.entries(jira.errors ?? {}).map(([k, v]) => `${k}: ${v}`)];
+    const lines = [
+      ...(jira.errorMessages ?? []),
+      ...Object.entries(jira.errors ?? {}).map(([k, v]) => `${k}: ${v}`),
+    ];
     if (lines.length > 0) return lines.map((line) => `  ${line}`).join("\n");
   }
   return JSON.stringify(details, null, 2);
