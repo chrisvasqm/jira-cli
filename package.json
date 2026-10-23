@@ -6,6 +6,10 @@
   "bin": {
     "jira": "./dist/index.js"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "dev": "tsx src/index.ts",
     "build": "tsc -p tsconfig.json",
@@ -13,7 +17,9 @@
     "check": "pnpm typecheck && pnpm build && pnpm lint && pnpm format:check",
     "lint": "oxlint src",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "bump": "pnpm version --no-git-tag-version",
+    "release": "bash scripts/release.sh"
   },
   "license": "ISC",
   "devEngines": {
