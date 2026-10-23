@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "Small Jira CLI for humans and agents",
   "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
   "bin": {
     "jira": "./dist/index.js"
   },
