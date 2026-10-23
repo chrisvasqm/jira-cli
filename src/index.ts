@@ -12,7 +12,7 @@ const { version } = createRequire(import.meta.url)("../package.json") as { versi
 const program = new Command()
   .name("jira")
   .description("Jira from the terminal, for humans and agents")
-  .version(version)
+  .version(version, "-v, --version", "Print the version")
   .option("--json", "Machine-readable output")
   .option("--config <path>", "Path to a config file (default: nearest .jira-cli.json)")
   .exitOverride()
