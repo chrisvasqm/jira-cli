@@ -2,9 +2,11 @@ import { join } from "node:path";
 import type { Command } from "commander";
 import { CONFIG_FILE, GLOBAL_CONFIG, configSchema, isGitignored, saveConfig } from "../core/config.js";
 import { CliError } from "../core/errors.js";
-import { JiraClient } from "../core/jira.js";
+import { HttpClient } from "../core/http.js";
 import { printResult, table, type OutputMode } from "../core/output.js";
 import { ask, askSecret } from "../core/prompt.js";
+import { BoardService } from "../services/board.service.js";
+import { UserService } from "../services/user.service.js";
 
 interface SetupOptions {
   global?: boolean;
@@ -27,11 +29,11 @@ async function runSetup(global: boolean, mode: OutputMode): Promise<void> {
   const email = await ask("Atlassian account email");
   const apiToken = await askSecret("API token (id.atlassian.com/manage/api-tokens)");
 
-  const client = new JiraClient({ baseUrl: baseUrl.replace(/\/+$/, ""), email, apiToken });
-  const me = await client.myself();
+  HttpClient.configure({ baseUrl: baseUrl.replace(/\/+$/, ""), email, apiToken });
+  const me = await new UserService().myself();
   process.stderr.write(`Authenticated as ${me.displayName}\n`);
 
-  const boards = await client.listBoards();
+  const boards = await new BoardService().listAll();
   if (boards.length === 0) throw new CliError("NO_BOARDS", "This account can see no boards.");
   process.stderr.write(
     `${boards
