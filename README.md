@@ -22,10 +22,11 @@ Create an API token at https://id.atlassian.com/manage/api-tokens.
 
 ## Commands
 
-| Command      | What it does                                                                                                                                                                                                                                                                            |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `jira setup` | Prompt for Jira URL, email, API token and board; write `.jira-cli.json`                                                                                                                                                                                                                 |
-| `jira board` | List tickets on the configured board grouped by column. Sprint boards default to the active sprint(s). Filters: `--sprint active\|<id>\|all`, `--status <column or status>`, `--assignee me\|<email or accountId>`, `--jql <query>`, `--order-by <fields>`, `--limit <n>` (default 100) |
+| Command                  | What it does                                                                                                                                                                                                                                                                            |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `jira setup`             | Prompt for Jira URL, email, API token and board; write `.jira-cli.json`                                                                                                                                                                                                                 |
+| `jira board`             | List tickets on the configured board grouped by column. Sprint boards default to the active sprint(s). Filters: `--sprint active\|<id>\|all`, `--status <column or status>`, `--assignee me\|<email or accountId>`, `--jql <query>`, `--order-by <fields>`, `--limit <n>` (default 100) |
+| `jira ticket view <KEY>` | Show a ticket: fields, description (ADF rendered as text) and the latest comments. `--comments <n>` (default 5, 0 hides them)                                                                                                                                                           |
 
 ## Output
 
