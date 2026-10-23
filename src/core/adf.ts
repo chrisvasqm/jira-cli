@@ -31,12 +31,45 @@ function attr(node: AdfNode, name: string): string {
   return typeof value === "string" ? value : "";
 }
 
+const MARK_WRAP: Record<string, string> = { strong: "**", em: "_", strike: "~~" };
+
 function inline(node: AdfNode): string {
   const text = node.text ?? "";
-  const link = node.marks?.find((mark) => mark.type === "link")?.attrs?.["href"];
-  const isCode = node.marks?.some((mark) => mark.type === "code");
-  const body = isCode ? `\`${text}\`` : text;
+  const marks = node.marks ?? [];
+  const link = marks.find((mark) => mark.type === "link")?.attrs?.["href"];
+  let body = marks.some((mark) => mark.type === "code") ? codeSpan(text) : text;
+  for (const mark of marks) {
+    const wrap = MARK_WRAP[mark.type];
+    if (wrap && body.trim()) body = `${wrap}${body}${wrap}`;
+  }
   return typeof link === "string" && link !== text ? `[${body}](${link})` : body;
+}
+
+/** Longest run of backticks in text, so fences can be made longer than it. */
+function longestTicks(text: string): number {
+  return Math.max(0, ...[...text.matchAll(/`+/g)].map((match) => match[0].length));
+}
+
+function codeSpan(text: string): string {
+  const ticks = "`".repeat(longestTicks(text) + 1);
+  return ticks.length > 1 ? `${ticks} ${text} ${ticks}` : `${ticks}${text}${ticks}`;
+}
+
+function codeBlock(node: AdfNode): string {
+  const code = children(node).join("");
+  const fence = "`".repeat(Math.max(3, longestTicks(code) + 1));
+  return `${fence}${attr(node, "language")}\n${code}\n${fence}`;
+}
+
+function taskItems(node: AdfNode): string {
+  return (node.content ?? [])
+    .map((item) => {
+      const done = item.attrs?.["state"] === "DONE" || item.attrs?.["state"] === "DECIDED";
+      const box = item.type === "decisionItem" ? "-" : done ? "- [x]" : "- [ ]";
+      if (item.type === "taskList") return quoteWith("  ", taskItems(item));
+      return `${box} ${children(item).join("")}`;
+    })
+    .join("\n");
 }
 
 /** Continuation lines of an item are indented under its bullet, which also nests sublists. */
@@ -63,10 +96,17 @@ function cell(node: AdfNode): string {
 
 function table(node: AdfNode): string {
   const rows = (node.content ?? []).map((row) => `| ${(row.content ?? []).map(cell).join(" | ")} |`);
-  const width = node.content?.[0]?.content?.length ?? 0;
+  const width = Math.max(0, ...(node.content ?? []).map(rowWidth));
   if (rows.length === 0 || width === 0) return "";
   const separator = `|${" --- |".repeat(width)}`;
   return [rows[0], separator, ...rows.slice(1)].join("\n");
+}
+
+function rowWidth(row: AdfNode): number {
+  return (row.content ?? []).reduce(
+    (sum, item) => sum + Math.max(1, Number(item.attrs?.["colspan"]) || 1),
+    0,
+  );
 }
 
 function date(node: AdfNode): string {
@@ -80,6 +120,10 @@ function render(node: AdfNode): string {
     case "blockquote":
     case "panel":
     case "expand":
+    case "nestedExpand":
+    case "layoutSection":
+    case "layoutColumn":
+    case "bodiedExtension":
       return node.type === "blockquote" ? quote(blocks(node)) : blocks(node);
     case "listItem":
       return children(node).join("\n");
@@ -96,7 +140,10 @@ function render(node: AdfNode): string {
     case "orderedList":
       return listItems(node, true);
     case "codeBlock":
-      return `\`\`\`${attr(node, "language")}\n${children(node).join("")}\n\`\`\``;
+      return codeBlock(node);
+    case "taskList":
+    case "decisionList":
+      return taskItems(node);
     case "rule":
       return "---";
     case "mention":
@@ -122,8 +169,12 @@ function render(node: AdfNode): string {
 }
 
 function quote(text: string): string {
+  return quoteWith("> ", text);
+}
+
+function quoteWith(prefix: string, text: string): string {
   return text
     .split("\n")
-    .map((line) => `> ${line}`)
+    .map((line) => prefix + line)
     .join("\n");
 }

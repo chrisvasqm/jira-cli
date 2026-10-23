@@ -1,5 +1,5 @@
 import type { Command } from "commander";
-import { intAtLeast } from "../core/args.js";
+import { intInRange } from "../core/args.js";
 import { bootstrap } from "../core/bootstrap.js";
 import { CliError } from "../core/errors.js";
 import { summarize, type Issue, type IssueSummary } from "../core/jira-types.js";
@@ -72,7 +72,7 @@ export function registerBoard(program: Command): void {
 }
 
 function validate(opts: BoardOptions): void {
-  intAtLeast(opts.limit, "--limit", 1);
+  intInRange(opts.limit, "--limit", 1, 10_000);
   if (opts.sprint !== undefined && !["active", "all"].includes(opts.sprint) && !/^\d+$/.test(opts.sprint)) {
     throw new CliError("USAGE", "--sprint takes 'active', 'all' or a numeric sprint id");
   }

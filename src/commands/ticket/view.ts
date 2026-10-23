@@ -1,8 +1,8 @@
 import type { Command } from "commander";
 import { adfToText } from "../../core/adf.js";
-import { intAtLeast, issueKey, ticketNotFound } from "../../core/args.js";
+import { intInRange, issueKey, ticketNotFound } from "../../core/args.js";
 import { bootstrap } from "../../core/bootstrap.js";
-import type { CommentView, IssueDetail } from "../../core/jira-types.js";
+import { summarize, type CommentView, type IssueDetail, type IssueSummary } from "../../core/jira-types.js";
 import { printResult, table } from "../../core/output.js";
 import { CommentService, toCommentView } from "../../services/comment.service.js";
 import { IssueService } from "../../services/issue.service.js";
@@ -11,19 +11,15 @@ interface ViewOptions {
   comments: string;
 }
 
-export interface TicketView {
-  key: string;
+/** Jira's comment endpoint returns at most 100 per page. */
+const MAX_COMMENTS = 100;
+
+export interface TicketView extends IssueSummary {
   url: string;
-  type: string;
-  status: string;
-  summary: string;
-  priority: string | null;
-  assignee: string | null;
   reporter: string | null;
   labels: string[];
   parent: { key: string; summary: string | null } | null;
   created: string;
-  updated: string;
   description: string;
   /** total is null when comments were not requested (--comments 0). */
   comments: { total: number | null; shown: CommentView[] };
@@ -33,10 +29,14 @@ export function registerView(ticket: Command): void {
   ticket
     .command("view <key>")
     .description("Show a ticket's details, description and latest comments")
-    .option("--comments <n>", "How many of the latest comments to show (0 for none)", "5")
+    .option(
+      "--comments <n>",
+      `How many of the latest comments to show (0 for none, at most ${MAX_COMMENTS})`,
+      "5",
+    )
     .action(async (rawKey: string, opts: ViewOptions, cmd: Command) => {
       const key = issueKey(rawKey);
-      const limit = intAtLeast(opts.comments, "--comments", 0);
+      const limit = intInRange(opts.comments, "--comments", 0, MAX_COMMENTS);
       const { config, mode } = bootstrap(cmd);
       const [issue, comments] = await Promise.all([
         new IssueService().get(key),
@@ -53,25 +53,28 @@ export function registerView(ticket: Command): void {
 function toView(issue: IssueDetail, url: string, comments: TicketView["comments"]): TicketView {
   const { fields } = issue;
   return {
-    key: issue.key,
+    ...summarize(issue),
     url,
-    type: fields.issuetype.name,
-    status: fields.status.name,
-    summary: fields.summary,
-    priority: fields.priority?.name ?? null,
-    assignee: fields.assignee?.displayName ?? null,
     reporter: fields.reporter?.displayName ?? null,
     labels: fields.labels ?? [],
     parent: fields.parent ? { key: fields.parent.key, summary: fields.parent.fields?.summary ?? null } : null,
     created: fields.created,
-    updated: fields.updated,
     description: adfToText(fields.description),
     comments,
   };
 }
 
+function pad(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+/** Local time, e.g. "2026-10-23 14:05 GMT-4". JSON output keeps Jira's ISO string. */
 function day(iso: string): string {
-  return iso.slice(0, 16).replace("T", " ");
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  const offset = -date.getTimezoneOffset() / 60;
+  const zone = `GMT${offset >= 0 ? "+" : ""}${offset}`;
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())} ${zone}`;
 }
 
 function renderHuman(view: TicketView): string {
