@@ -41,23 +41,25 @@ export class HttpClient {
     this.authHeader = `Basic ${Buffer.from(raw).toString("base64")}`;
   }
 
+  /** GET is retried on transient failures. */
   get<T>(path: string): Promise<T> {
-    return this.send<T>("GET", path);
+    return this.send<T>("GET", path, undefined, true);
   }
 
+  /** Writes are never retried: Jira may already have applied them. */
   post<T>(path: string, body: unknown): Promise<T> {
-    return this.send<T>("POST", path, body);
+    return this.send<T>("POST", path, body, false);
   }
 
   put<T>(path: string, body: unknown): Promise<T> {
-    return this.send<T>("PUT", path, body);
+    return this.send<T>("PUT", path, body, false);
   }
 
   delete<T>(path: string): Promise<T> {
-    return this.send<T>("DELETE", path);
+    return this.send<T>("DELETE", path, undefined, false);
   }
 
-  private async send<T>(method: string, path: string, body?: unknown): Promise<T> {
+  private async send<T>(method: string, path: string, body: unknown, idempotent: boolean): Promise<T> {
     const url = `${this.creds.baseUrl}${path}`;
     const headers: Record<string, string> = { Authorization: this.authHeader, Accept: "application/json" };
     if (body !== undefined) headers["Content-Type"] = "application/json";
@@ -69,14 +71,14 @@ export class HttpClient {
       try {
         res = await fetch(url, init);
       } catch (err) {
-        if (attempt >= this.retry.maxRetries) {
+        if (!idempotent || attempt >= this.retry.maxRetries) {
           throw new CliError("NETWORK_ERROR", `Could not reach ${this.creds.baseUrl}`, String(err));
         }
         await sleep(this.backoff(attempt));
         continue;
       }
 
-      if (RETRYABLE_STATUS.has(res.status) && attempt < this.retry.maxRetries) {
+      if (idempotent && RETRYABLE_STATUS.has(res.status) && attempt < this.retry.maxRetries) {
         await sleep(this.backoff(attempt, res.headers.get("Retry-After")));
         continue;
       }
@@ -95,8 +97,9 @@ export class HttpClient {
       const text = await res.text();
       throw new CliError("JIRA_ERROR", `${method} ${path} returned ${res.status}`, parseJson(text) ?? text);
     }
-    if (res.status === 204) return undefined as T;
-    return (await res.json()) as T;
+    const text = await res.text();
+    if (text.trim() === "") return undefined as T;
+    return JSON.parse(text) as T;
   }
 
   private backoff(attempt: number, retryAfter?: string | null): number {

@@ -1,4 +1,5 @@
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { dirname, join, resolve } from "node:path";
 import { homedir } from "node:os";
 import { z } from "zod";
@@ -52,13 +53,16 @@ export function loadConfig(explicit?: string): { path: string; config: Config } 
 }
 
 export function saveConfig(path: string, config: Config): void {
+  mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
   writeFileSync(path, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
+  chmodSync(path, 0o600);
 }
 
+/** true = ignored, false = tracked by git and not ignored, undefined = not a git repo or git missing. */
 export function isGitignored(configPath: string): boolean | undefined {
-  const gitignore = join(dirname(configPath), ".gitignore");
-  if (!existsSync(gitignore)) return undefined;
-  return readFileSync(gitignore, "utf8")
-    .split("\n")
-    .some((line) => line.trim() === CONFIG_FILE);
+  const result = spawnSync("git", ["check-ignore", "-q", configPath], { cwd: dirname(configPath), stdio: "ignore" });
+  if (result.error || result.status === null || result.status > 1) return undefined;
+  if (result.status === 0) return true;
+  const inRepo = spawnSync("git", ["rev-parse", "--is-inside-work-tree"], { cwd: dirname(configPath), stdio: "ignore" });
+  return inRepo.status === 0 ? false : undefined;
 }

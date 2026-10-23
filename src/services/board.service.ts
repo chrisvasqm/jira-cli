@@ -23,8 +23,8 @@ export class BoardService {
     for (;;) {
       const page = await this.http.get<Page<Board>>(`/rest/agile/1.0/board?startAt=${startAt}&maxResults=50`);
       boards.push(...page.values);
-      if (page.isLast) return boards;
-      startAt += page.maxResults;
+      if (page.isLast || page.values.length === 0) return boards;
+      startAt += page.values.length;
     }
   }
 }

@@ -1,11 +1,15 @@
 import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
+import { CliError } from "./errors.js";
+
+const eof = (): CliError => new CliError("INPUT_EOF", "Input ended before all prompts were answered.");
 
 export async function ask(question: string, fallback?: string): Promise<string> {
   const rl = createInterface({ input: stdin, output: stdout });
   try {
     const suffix = fallback ? ` [${fallback}]` : "";
-    const answer = (await rl.question(`${question}${suffix}: `)).trim();
+    const closed = new Promise<never>((_, reject) => rl.once("close", () => reject(eof())));
+    const answer = (await Promise.race([rl.question(`${question}${suffix}: `), closed])).trim();
     return answer || fallback || "";
   } finally {
     rl.close();
@@ -15,8 +19,9 @@ export async function ask(question: string, fallback?: string): Promise<string> 
 export async function askSecret(question: string): Promise<string> {
   if (!stdin.isTTY) return ask(question);
   stdout.write(`${question}: `);
-  return new Promise((resolvePromise) => {
+  return new Promise((resolvePromise, reject) => {
     let value = "";
+    stdin.once("end", () => reject(eof()));
     stdin.setRawMode(true);
     stdin.resume();
     stdin.setEncoding("utf8");
