@@ -1,6 +1,7 @@
 import { basename, join, resolve } from "node:path";
 import type { Command } from "commander";
 import { z } from "zod";
+import { globalOptions, outputMode } from "../core/bootstrap.js";
 import { CONFIG_FILE, GLOBAL_CONFIG, configSchema, isGitignored, saveConfig } from "../core/config.js";
 import { CliError } from "../core/errors.js";
 import { HttpClient } from "../core/http.js";
@@ -11,8 +12,6 @@ import { UserService } from "../services/user.service.js";
 
 interface SetupOptions {
   global?: boolean;
-  json?: boolean;
-  config?: string;
 }
 
 const shape = configSchema.shape;
@@ -35,8 +34,8 @@ export function registerSetup(program: Command): void {
     .description(`Create ${CONFIG_FILE} in the current directory by prompting for Jira details`)
     .option("--global", `Write to ${GLOBAL_CONFIG} instead`)
     .action(async (opts: SetupOptions, cmd: Command) => {
-      const all = cmd.optsWithGlobals<SetupOptions>();
-      const mode: OutputMode = all.json ? "json" : "human";
+      const all = globalOptions(cmd);
+      const mode = outputMode(cmd);
       if (opts.global && all.config)
         throw new CliError("INVALID_OPTIONS", "Use either --global or --config, not both.");
       const target = opts.global

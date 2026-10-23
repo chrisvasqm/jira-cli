@@ -13,9 +13,17 @@ export interface Context {
   mode: OutputMode;
 }
 
+export function globalOptions(cmd: Command): GlobalOptions {
+  return cmd.optsWithGlobals<GlobalOptions>();
+}
+
+export function outputMode(cmd: Command): OutputMode {
+  return globalOptions(cmd).json ? "json" : "human";
+}
+
 /** Load config for the current directory and configure the HTTP client. */
 export function bootstrap(cmd: Command): Context {
-  const opts = cmd.optsWithGlobals<GlobalOptions>();
+  const opts = globalOptions(cmd);
   const { config } = loadConfig(opts.config);
   HttpClient.configure(config);
   return { config, mode: opts.json ? "json" : "human" };

@@ -1,3 +1,4 @@
+import { CliError } from "../core/errors.js";
 import { HttpClient } from "../core/http.js";
 import type { Issue } from "../core/jira-types.js";
 
@@ -28,6 +29,12 @@ export interface Sprint {
 interface Page<T> {
   values: T[];
   isLast: boolean;
+}
+
+export interface IssueList {
+  issues: Issue[];
+  total: number | null;
+  hasMore: boolean | null;
 }
 
 interface IssuePage {
@@ -72,23 +79,24 @@ export class BoardService {
     };
   }
 
-  sprints(boardId: number, state: string): Promise<Sprint[]> {
-    return this.pageAll<Sprint>(`/rest/agile/1.0/board/${boardId}/sprint`, { state });
+  /** Sprints in the given state, or undefined when the board does not support sprints (Jira answers 400). */
+  async sprints(boardId: number, state: string): Promise<Sprint[] | undefined> {
+    try {
+      return await this.pageAll<Sprint>(`/rest/agile/1.0/board/${boardId}/sprint`, { state });
+    } catch (err) {
+      if (err instanceof CliError && err.status === 400) return undefined;
+      throw err;
+    }
   }
 
   /**
    * Issues matching the board filter, optionally narrowed by JQL, up to `limit`.
-   * `hasMore` says whether the limit cut the list short; `total` is Jira's count when given.
+   * `total` and `hasMore` are null when Jira does not report a total.
    */
-  async issues(
-    boardId: number,
-    jql: string | undefined,
-    limit: number,
-  ): Promise<{ issues: Issue[]; total: number; hasMore: boolean }> {
+  async issues(boardId: number, jql: string | undefined, limit: number): Promise<IssueList> {
     const issues: Issue[] = [];
     let total: number | undefined;
-    let hasMore = true;
-    while (issues.length < limit && hasMore) {
+    while (issues.length < limit) {
       const pageSize = Math.min(50, limit - issues.length);
       const params = new URLSearchParams({
         startAt: String(issues.length),
@@ -99,11 +107,13 @@ export class BoardService {
       const page = await this.http.get<IssuePage>(`/rest/agile/1.0/board/${boardId}/issue?${params}`);
       issues.push(...page.issues);
       total = page.total ?? total;
-      hasMore = total === undefined ? page.issues.length === pageSize : issues.length < total;
+      if (page.issues.length < pageSize) break;
+      if (total !== undefined && issues.length >= total) break;
     }
-    // Without a total from Jira we can only report what we fetched; a full last page
-    // may or may not mean more exist, so hasMore stays true only when total is known.
-    if (total === undefined) hasMore = false;
-    return { issues, total: total ?? issues.length, hasMore };
+    return {
+      issues,
+      total: total ?? null,
+      hasMore: total === null || total === undefined ? null : issues.length < total,
+    };
   }
 }
