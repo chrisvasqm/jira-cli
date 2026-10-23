@@ -10,6 +10,7 @@ import {
   type IssueSummary,
 } from "../../core/jira-types.js";
 import { printResult, table } from "../../core/output.js";
+import { localTime, renderComment } from "../render.js";
 import { CommentService } from "../../services/comment.service.js";
 import { IssueService } from "../../services/issue.service.js";
 
@@ -70,24 +71,6 @@ function toView(issue: IssueDetail, url: string, comments: TicketView["comments"
   };
 }
 
-const LOCAL_TIME = new Intl.DateTimeFormat("en-CA", {
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  hourCycle: "h23",
-  timeZoneName: "shortOffset",
-});
-
-/** Local time, e.g. "2026-10-23 14:05 GMT-4". JSON output keeps Jira's ISO string. */
-function day(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  const part = Object.fromEntries(LOCAL_TIME.formatToParts(date).map(({ type, value }) => [type, value]));
-  return `${part["year"]}-${part["month"]}-${part["day"]} ${part["hour"]}:${part["minute"]} ${part["timeZoneName"]}`;
-}
-
 function renderHuman(view: TicketView): string {
   const rows: [string, string][] = [
     ["Status", view.status],
@@ -98,7 +81,7 @@ function renderHuman(view: TicketView): string {
   ];
   if (view.parent) rows.push(["Parent", `${view.parent.key} ${view.parent.summary ?? ""}`.trim()]);
   if (view.labels.length > 0) rows.push(["Labels", view.labels.join(", ")]);
-  rows.push(["Created", day(view.created)], ["Updated", day(view.updated)], ["URL", view.url]);
+  rows.push(["Created", localTime(view.created)], ["Updated", localTime(view.updated)], ["URL", view.url]);
 
   const sections = [
     `${view.key}  ${view.summary}`,
@@ -109,11 +92,7 @@ function renderHuman(view: TicketView): string {
   if (total !== null && total > 0) {
     const heading =
       shown.length < total ? `Comments (latest ${shown.length} of ${total})` : `Comments (${total})`;
-    const bodies = shown.map(
-      (comment) =>
-        `${comment.author ?? "unknown"} · ${day(comment.created)} · #${comment.id}\n${comment.body}`,
-    );
-    sections.push([heading, ...bodies].join("\n\n"));
+    sections.push([heading, ...shown.map(renderComment)].join("\n\n"));
   }
   return sections.join("\n\n");
 }

@@ -1,6 +1,7 @@
 import { createRequire } from "node:module";
 import { Command, CommanderError } from "commander";
 import { registerBoard } from "./commands/board.js";
+import { registerComment } from "./commands/comment/index.js";
 import { registerSetup } from "./commands/setup.js";
 import { registerTicket } from "./commands/ticket/index.js";
 import { CliError } from "./core/errors.js";
@@ -21,6 +22,7 @@ const program = new Command()
 registerSetup(program);
 registerBoard(program);
 registerTicket(program);
+registerComment(program);
 
 function exitCode(err: unknown): number {
   if (err instanceof CliError && err.code === "INTERRUPTED") return 130;
