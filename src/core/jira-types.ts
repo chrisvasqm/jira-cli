@@ -1,3 +1,5 @@
+import { adfToText, type AdfNode } from "./adf.js";
+
 /** Minimal Jira issue fields the CLI reads. Extend as commands need more. */
 export interface JiraUser {
   accountId: string;
@@ -19,6 +21,26 @@ export interface Issue {
   fields: IssueFields;
 }
 
+export interface IssueDetailFields extends IssueFields {
+  reporter?: JiraUser | null;
+  created: string;
+  labels?: string[];
+  description?: AdfNode | null;
+  parent?: { key: string; fields?: { summary?: string } } | null;
+}
+
+export interface IssueDetail extends Issue {
+  fields: IssueDetailFields;
+}
+
+export interface Comment {
+  id: string;
+  author?: JiraUser;
+  body?: AdfNode;
+  created: string;
+  updated: string;
+}
+
 export interface IssueSummary {
   key: string;
   type: string;
@@ -27,6 +49,14 @@ export interface IssueSummary {
   priority: string | null;
   assignee: string | null;
   updated: string;
+}
+
+export interface CommentView {
+  id: string;
+  author: string | null;
+  created: string;
+  updated: string;
+  body: string;
 }
 
 export function summarize(issue: Issue): IssueSummary {
@@ -39,5 +69,15 @@ export function summarize(issue: Issue): IssueSummary {
     priority: fields.priority?.name ?? null,
     assignee: fields.assignee?.displayName ?? null,
     updated: fields.updated,
+  };
+}
+
+export function toCommentView(comment: Comment): CommentView {
+  return {
+    id: comment.id,
+    author: comment.author?.displayName ?? null,
+    created: comment.created,
+    updated: comment.updated,
+    body: adfToText(comment.body),
   };
 }
