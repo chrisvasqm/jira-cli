@@ -18,10 +18,10 @@ Create an API token at https://id.atlassian.com/manage/api-tokens.
 
 ## Commands
 
-| Command      | What it does                                                                                                                                                                       |
-| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `jira setup` | Prompt for Jira URL, email, API token and board; write `.jira-cli.json`                                                                                                            |
-| `jira board` | List tickets on the configured board grouped by column. Filters: `--sprint active\|<id>`, `--status <name>`, `--assignee me\|<name>`, `--jql <query>`, `--limit <n>` (default 100) |
+| Command      | What it does                                                                                                                                                                                                                                      |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `jira setup` | Prompt for Jira URL, email, API token and board; write `.jira-cli.json`                                                                                                                                                                           |
+| `jira board` | List tickets on the configured board grouped by column. Scrum boards default to the active sprint(s). Filters: `--sprint active\|<id>\|all`, `--status <column or status>`, `--assignee me\|<name>`, `--jql <query>`, `--limit <n>` (default 100) |
 
 ## Output
 

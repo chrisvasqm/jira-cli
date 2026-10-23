@@ -13,6 +13,11 @@ export interface BoardColumn {
   statusIds: string[];
 }
 
+export interface BoardConfig {
+  type: "scrum" | "kanban" | "simple" | string;
+  columns: BoardColumn[];
+}
+
 export interface Sprint {
   id: number;
   name: string;
@@ -30,6 +35,7 @@ interface IssuePage {
 }
 
 interface BoardConfiguration {
+  type: string;
   columnConfig: { columns: { name: string; statuses: { id: string }[] }[] };
 }
 
@@ -50,12 +56,15 @@ export class BoardService {
     }
   }
 
-  async columns(boardId: number): Promise<BoardColumn[]> {
+  async configuration(boardId: number): Promise<BoardConfig> {
     const cfg = await this.http.get<BoardConfiguration>(`/rest/agile/1.0/board/${boardId}/configuration`);
-    return cfg.columnConfig.columns.map((col) => ({
-      name: col.name,
-      statusIds: col.statuses.map((status) => status.id),
-    }));
+    return {
+      type: cfg.type,
+      columns: cfg.columnConfig.columns.map((col) => ({
+        name: col.name,
+        statusIds: col.statuses.map((status) => status.id),
+      })),
+    };
   }
 
   async sprints(boardId: number, state: string): Promise<Sprint[]> {
@@ -65,15 +74,19 @@ export class BoardService {
     return page.values;
   }
 
-  /** Issues visible on the board, optionally narrowed by JQL, up to `limit`. */
+  /**
+   * Issues matching the board filter, optionally narrowed by JQL, up to `limit`.
+   * `hasMore` says whether the limit cut the list short; `total` is Jira's count when given.
+   */
   async issues(
     boardId: number,
     jql: string | undefined,
     limit: number,
-  ): Promise<{ issues: Issue[]; total: number }> {
+  ): Promise<{ issues: Issue[]; total: number; hasMore: boolean }> {
     const issues: Issue[] = [];
-    let total = 0;
-    while (issues.length < limit) {
+    let total: number | undefined;
+    let hasMore = true;
+    while (issues.length < limit && hasMore) {
       const pageSize = Math.min(50, limit - issues.length);
       const params = new URLSearchParams({
         startAt: String(issues.length),
@@ -83,9 +96,9 @@ export class BoardService {
       if (jql) params.set("jql", jql);
       const page = await this.http.get<IssuePage>(`/rest/agile/1.0/board/${boardId}/issue?${params}`);
       issues.push(...page.issues);
-      total = page.total ?? issues.length;
-      if (page.issues.length === 0 || issues.length >= total) break;
+      total = page.total ?? total;
+      hasMore = page.issues.length === pageSize && (total === undefined || issues.length < total);
     }
-    return { issues, total };
+    return { issues, total: total ?? issues.length, hasMore };
   }
 }
