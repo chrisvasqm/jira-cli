@@ -1,16 +1,11 @@
 # jira-cli
 
-CLI for Jira, written in TypeScript.
+A small command-line tool for working with Jira from the terminal, written in TypeScript.
 
-## Setup
+## Getting started
 
 ```sh
 pnpm install
 cp example.env .env   # set JIRA_API_KEY
-```
-
-## Run
-
-```sh
 pnpm dev
 ```
