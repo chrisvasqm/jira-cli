@@ -7,6 +7,13 @@ import { CliError } from "./core/errors.js";
 import { printError } from "./core/output.js";
 import { closePrompts } from "./core/prompt.js";
 
+const MIN_NODE = 24;
+const nodeMajor = Number(process.versions.node.split(".")[0]);
+if (nodeMajor < MIN_NODE) {
+  process.stderr.write(`jira needs Node.js ${MIN_NODE} or newer (you have ${process.versions.node}).\n`);
+  process.exit(1);
+}
+
 const { version } = createRequire(import.meta.url)("../package.json") as { version: string };
 
 const program = new Command()
