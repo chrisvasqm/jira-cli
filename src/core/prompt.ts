@@ -39,8 +39,12 @@ function failAll(err: Error): void {
   for (const waiter of waiters.splice(0)) waiter.reject(err);
 }
 
-/** Detach readline so it neither echoes nor buffers raw keystrokes. */
+/**
+ * Detach readline so it neither echoes nor buffers raw keystrokes. Its close
+ * listener is removed first: this close is ours, not the end of input.
+ */
 function suspend(): void {
+  rl?.removeAllListeners("close");
   rl?.close();
   rl = undefined;
 }
