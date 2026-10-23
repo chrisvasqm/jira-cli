@@ -39,8 +39,7 @@ export function registerBoard(program: Command): void {
     .option("--order-by <fields>", "JQL sort, e.g. 'updated DESC'")
     .option("--limit <n>", "Maximum issues to fetch", "100")
     .action(async (opts: BoardOptions, cmd: Command) => {
-      validate(opts);
-      const limit = Number(opts.limit);
+      const limit = validate(opts);
       const { config, mode } = bootstrap(cmd);
       const boards = new BoardService();
 
@@ -71,11 +70,13 @@ export function registerBoard(program: Command): void {
     });
 }
 
-function validate(opts: BoardOptions): void {
-  intInRange(opts.limit, "--limit", 1, 10_000);
+/** Checks the flags and returns --limit as a number. */
+function validate(opts: BoardOptions): number {
+  const limit = intInRange(opts.limit, "--limit", 1, 999_999_999);
   if (opts.sprint !== undefined && !["active", "all"].includes(opts.sprint) && !/^\d+$/.test(opts.sprint)) {
     throw new CliError("USAGE", "--sprint takes 'active', 'all' or a numeric sprint id");
   }
+  return limit;
 }
 
 /** `active` is undefined when the board has no sprint support; only fetched when needed. */

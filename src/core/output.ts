@@ -1,3 +1,4 @@
+import { stripVTControlCharacters } from "node:util";
 import { CliError } from "./errors.js";
 
 export type OutputMode = "human" | "json";
@@ -10,50 +11,23 @@ export function printResult(mode: OutputMode, data: unknown, human: () => string
   process.stdout.write(`${stripControls(human())}\n`);
 }
 
-const ESC = 0x1b;
-const BEL = 0x07;
-
 /**
- * Jira text is user-written, so drop terminal escape sequences and control
- * characters (except newline and tab) before it reaches a terminal.
+ * Jira text is user-written, so drop terminal escape sequences, control characters
+ * (except newline and tab) and invisible bidi or zero-width marks before it reaches a terminal.
  */
 export function stripControls(text: string): string {
-  let out = "";
-  let index = 0;
-  while (index < text.length) {
-    const code = text.charCodeAt(index);
-    if (code === ESC) {
-      index = skipEscape(text, index);
-      continue;
-    }
-    if (!isControl(code)) out += text[index];
-    index += 1;
-  }
-  return out;
+  return [...stripVTControlCharacters(text)].filter((char) => !isHidden(char.codePointAt(0) ?? 0)).join("");
 }
 
-function isControl(code: number): boolean {
+function isHidden(code: number): boolean {
   if (code === 0x0a || code === 0x09) return false;
-  return code < 0x20 || (code >= 0x7f && code <= 0x9f);
-}
-
-/** Index just past the escape sequence starting at `start` (OSC, CSI or a two-byte escape). */
-function skipEscape(text: string, start: number): number {
-  const kind = text[start + 1];
-  let index = start + 2;
-  if (kind === "]") {
-    while (index < text.length && text.charCodeAt(index) !== BEL && text.charCodeAt(index) !== ESC)
-      index += 1;
-    if (text.charCodeAt(index) === ESC && text[index + 1] === "\\") return index + 2;
-    return text.charCodeAt(index) === BEL ? index + 1 : index;
-  }
-  if (kind !== "[") return Math.min(index, text.length);
-  while (index < text.length && !isFinalByte(text.charCodeAt(index))) index += 1;
-  return index + 1;
-}
-
-function isFinalByte(code: number): boolean {
-  return code >= 0x40 && code <= 0x7e;
+  return (
+    code < 0x20 ||
+    (code >= 0x7f && code <= 0x9f) ||
+    (code >= 0x200b && code <= 0x200f) ||
+    (code >= 0x202a && code <= 0x202e) ||
+    (code >= 0x2066 && code <= 0x2069)
+  );
 }
 
 export function printError(mode: OutputMode, err: unknown): void {

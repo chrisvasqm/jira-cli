@@ -40,14 +40,23 @@ function inline(node: AdfNode): string {
   let body = marks.some((mark) => mark.type === "code") ? codeSpan(text) : text;
   for (const mark of marks) {
     const wrap = MARK_WRAP[mark.type];
-    if (wrap && body.trim()) body = `${wrap}${body}${wrap}`;
+    if (wrap) body = wrapTrimmed(body, wrap);
   }
   return typeof link === "string" && link !== text ? `[${body}](${link})` : body;
 }
 
+/** Wrap inside surrounding spaces: "bold " becomes "**bold** ", which Markdown reads as emphasis. */
+function wrapTrimmed(body: string, wrap: string): string {
+  const match = /^(\s*)([\s\S]*?)(\s*)$/.exec(body);
+  if (!match?.[2]) return body;
+  return `${match[1]}${wrap}${match[2]}${wrap}${match[3]}`;
+}
+
 /** Longest run of backticks in text, so fences can be made longer than it. */
 function longestTicks(text: string): number {
-  return Math.max(0, ...[...text.matchAll(/`+/g)].map((match) => match[0].length));
+  let longest = 0;
+  for (const match of text.matchAll(/`+/g)) longest = Math.max(longest, match[0].length);
+  return longest;
 }
 
 function codeSpan(text: string): string {
@@ -96,7 +105,7 @@ function cell(node: AdfNode): string {
 
 function table(node: AdfNode): string {
   const rows = (node.content ?? []).map((row) => `| ${(row.content ?? []).map(cell).join(" | ")} |`);
-  const width = Math.max(0, ...(node.content ?? []).map(rowWidth));
+  const width = (node.content ?? []).reduce((widest, row) => Math.max(widest, rowWidth(row)), 0);
   if (rows.length === 0 || width === 0) return "";
   const separator = `|${" --- |".repeat(width)}`;
   return [rows[0], separator, ...rows.slice(1)].join("\n");
@@ -109,6 +118,11 @@ function rowWidth(row: AdfNode): number {
   );
 }
 
+function headingLevel(node: AdfNode): number {
+  const level = Math.trunc(Number(node.attrs?.["level"]));
+  return Number.isFinite(level) ? Math.min(6, Math.max(1, level)) : 1;
+}
+
 function date(node: AdfNode): string {
   const parsed = new Date(Number(node.attrs?.["timestamp"]));
   return Number.isNaN(parsed.getTime()) ? "[date]" : parsed.toISOString().slice(0, 10);
@@ -116,15 +130,16 @@ function date(node: AdfNode): string {
 
 function render(node: AdfNode): string {
   switch (node.type) {
-    case "doc":
     case "blockquote":
+      return quote(blocks(node));
+    case "doc":
     case "panel":
     case "expand":
     case "nestedExpand":
     case "layoutSection":
     case "layoutColumn":
     case "bodiedExtension":
-      return node.type === "blockquote" ? quote(blocks(node)) : blocks(node);
+      return blocks(node);
     case "listItem":
       return children(node).join("\n");
     case "text":
@@ -134,7 +149,7 @@ function render(node: AdfNode): string {
     case "paragraph":
       return children(node).join("");
     case "heading":
-      return `${"#".repeat(Number(node.attrs?.["level"] ?? 1))} ${children(node).join("")}`;
+      return `${"#".repeat(headingLevel(node))} ${children(node).join("")}`;
     case "bulletList":
       return listItems(node, false);
     case "orderedList":
