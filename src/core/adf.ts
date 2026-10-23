@@ -4,6 +4,7 @@
  */
 export interface AdfNode {
   type: string;
+  version?: number;
   text?: string;
   attrs?: Record<string, unknown>;
   content?: AdfNode[];
@@ -185,4 +186,61 @@ function prefixLines(prefix: string, text: string): string {
     .split("\n")
     .map((line) => prefix + line)
     .join("\n");
+}
+
+interface Chunk {
+  text: string;
+  code: boolean;
+  language: string;
+}
+
+/**
+ * Plain text to ADF for comments and descriptions: blank lines split paragraphs,
+ * single newlines become line breaks, and ``` fences become code blocks.
+ */
+export function textToAdf(text: string): AdfNode {
+  const content = splitFences(text.replaceAll("\r\n", "\n")).flatMap((chunk) =>
+    chunk.code ? [codeNode(chunk)] : paragraphs(chunk.text),
+  );
+  return { type: "doc", version: 1, content };
+}
+
+function splitFences(text: string): Chunk[] {
+  const chunks: Chunk[] = [];
+  let current: Chunk = { text: "", code: false, language: "" };
+  for (const line of text.split("\n")) {
+    const fence = /^```(\S*)\s*$/.exec(line);
+    const toggles = fence !== null && (!current.code || fence[1] === "");
+    if (!toggles) {
+      current.text += `${line}\n`;
+      continue;
+    }
+    chunks.push(current);
+    current = { text: "", code: !current.code, language: fence[1] ?? "" };
+  }
+  chunks.push(current);
+  return chunks;
+}
+
+function codeNode(chunk: Chunk): AdfNode {
+  const code = chunk.text.replace(/\n$/, "");
+  const node: AdfNode = { type: "codeBlock", content: code ? [{ type: "text", text: code }] : [] };
+  if (chunk.language) node.attrs = { language: chunk.language };
+  return node;
+}
+
+function paragraphs(text: string): AdfNode[] {
+  return text
+    .split(/\n[ \t]*\n/)
+    .map((block) => block.replace(/^\n+|\n+$/g, ""))
+    .filter((block) => block.trim().length > 0)
+    .map((block) => ({
+      type: "paragraph",
+      content: block
+        .split("\n")
+        .flatMap((line, index) => [
+          ...(index > 0 ? [{ type: "hardBreak" }] : []),
+          ...(line ? [{ type: "text", text: line }] : []),
+        ]),
+    }));
 }
