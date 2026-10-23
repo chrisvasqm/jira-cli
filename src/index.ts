@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { createRequire } from "node:module";
 import { Command, CommanderError } from "commander";
+import { registerBoard } from "./commands/board.js";
 import { registerSetup } from "./commands/setup.js";
 import { CliError } from "./core/errors.js";
 import { printError } from "./core/output.js";
@@ -18,6 +19,7 @@ const program = new Command()
   .configureOutput({ writeErr: () => undefined });
 
 registerSetup(program);
+registerBoard(program);
 
 function exitCode(err: unknown): number {
   if (err instanceof CliError && err.code === "INTERRUPTED") return 130;
