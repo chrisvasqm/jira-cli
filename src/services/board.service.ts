@@ -1,4 +1,6 @@
+import { CliError } from "../core/errors.js";
 import { HttpClient } from "../core/http.js";
+import type { Issue } from "../core/jira-types.js";
 
 export interface Board {
   id: number;
@@ -7,24 +9,111 @@ export interface Board {
   location?: { projectKey?: string; projectName?: string };
 }
 
+export interface BoardColumn {
+  name: string;
+  statusIds: string[];
+}
+
+export interface BoardConfig {
+  /** "scrum", "kanban" or "simple" as reported by Jira. */
+  type: string;
+  columns: BoardColumn[];
+}
+
+export interface Sprint {
+  id: number;
+  name: string;
+  state: "future" | "active" | "closed";
+}
+
 interface Page<T> {
   values: T[];
   isLast: boolean;
-  maxResults: number;
 }
+
+export interface IssueList {
+  issues: Issue[];
+  total: number | null;
+  hasMore: boolean | null;
+}
+
+interface IssuePage {
+  issues: Issue[];
+  total?: number;
+}
+
+interface BoardConfiguration {
+  type: string;
+  columnConfig: { columns: { name: string; statuses: { id: string }[] }[] };
+}
+
+export const ISSUE_LIST_FIELDS = "summary,status,issuetype,priority,assignee,updated";
 
 /** /rest/agile/1.0/board endpoints. */
 export class BoardService {
   constructor(private readonly http = HttpClient.get()) {}
 
-  async listAll(): Promise<Board[]> {
-    const boards: Board[] = [];
-    let startAt = 0;
+  listAll(): Promise<Board[]> {
+    return this.pageAll<Board>("/rest/agile/1.0/board", {});
+  }
+
+  /** Follow startAt/isLast pagination for `values`-style Agile endpoints. */
+  private async pageAll<T>(path: string, query: Record<string, string>): Promise<T[]> {
+    const items: T[] = [];
     for (;;) {
-      const page = await this.http.get<Page<Board>>(`/rest/agile/1.0/board?startAt=${startAt}&maxResults=50`);
-      boards.push(...page.values);
-      if (page.isLast || page.values.length === 0) return boards;
-      startAt += page.values.length;
+      const params = new URLSearchParams({ ...query, startAt: String(items.length), maxResults: "50" });
+      const page = await this.http.get<Page<T>>(`${path}?${params}`);
+      items.push(...page.values);
+      if (page.isLast || page.values.length === 0) return items;
     }
+  }
+
+  async configuration(boardId: number): Promise<BoardConfig> {
+    const cfg = await this.http.get<BoardConfiguration>(`/rest/agile/1.0/board/${boardId}/configuration`);
+    return {
+      type: cfg.type,
+      columns: cfg.columnConfig.columns.map((col) => ({
+        name: col.name,
+        statusIds: col.statuses.map((status) => status.id),
+      })),
+    };
+  }
+
+  /** Sprints in the given state, or undefined when the board does not support sprints (Jira answers 400). */
+  async sprints(boardId: number, state: string): Promise<Sprint[] | undefined> {
+    try {
+      return await this.pageAll<Sprint>(`/rest/agile/1.0/board/${boardId}/sprint`, { state });
+    } catch (err) {
+      if (err instanceof CliError && err.status === 400) return undefined;
+      throw err;
+    }
+  }
+
+  /**
+   * Issues matching the board filter, optionally narrowed by JQL, up to `limit`.
+   * `total` and `hasMore` are null when Jira does not report a total.
+   */
+  async issues(boardId: number, jql: string | undefined, limit: number): Promise<IssueList> {
+    const issues: Issue[] = [];
+    let total: number | undefined;
+    while (issues.length < limit) {
+      const pageSize = Math.min(50, limit - issues.length);
+      const params = new URLSearchParams({
+        startAt: String(issues.length),
+        maxResults: String(pageSize),
+        fields: ISSUE_LIST_FIELDS,
+      });
+      if (jql) params.set("jql", jql);
+      const page = await this.http.get<IssuePage>(`/rest/agile/1.0/board/${boardId}/issue?${params}`);
+      issues.push(...page.issues);
+      total = page.total ?? total;
+      if (page.issues.length < pageSize) break;
+      if (total !== undefined && issues.length >= total) break;
+    }
+    return {
+      issues,
+      total: total ?? null,
+      hasMore: total === null || total === undefined ? null : issues.length < total,
+    };
   }
 }

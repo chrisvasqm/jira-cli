@@ -16,6 +16,13 @@ Config lookup order: `--config <path>`, nearest `.jira-cli.json` walking up from
 
 Create an API token at https://id.atlassian.com/manage/api-tokens.
 
+## Commands
+
+| Command      | What it does                                                                                                                                                                                                                                                                            |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `jira setup` | Prompt for Jira URL, email, API token and board; write `.jira-cli.json`                                                                                                                                                                                                                 |
+| `jira board` | List tickets on the configured board grouped by column. Sprint boards default to the active sprint(s). Filters: `--sprint active\|<id>\|all`, `--status <column or status>`, `--assignee me\|<email or accountId>`, `--jql <query>`, `--order-by <fields>`, `--limit <n>` (default 100) |
+
 ## Output
 
 Every command prints a human-readable result by default. Add `--json` for `{ "ok": true, "data": ... }` or `{ "ok": false, "error": { "code", "message", "details" } }` with a non-zero exit code on failure.

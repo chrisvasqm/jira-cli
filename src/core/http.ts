@@ -112,7 +112,12 @@ export class HttpClient {
     }
     if (!res.ok) {
       const text = await res.text();
-      throw new CliError("JIRA_ERROR", `${method} ${path} returned ${res.status}`, parseJson(text) ?? text);
+      throw new CliError(
+        "JIRA_ERROR",
+        `${method} ${path} returned ${res.status}`,
+        parseJson(text) ?? text,
+        res.status,
+      );
     }
     const text = await res.text();
     if (text.trim() === "") return undefined as T;
