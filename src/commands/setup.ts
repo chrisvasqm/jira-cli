@@ -1,4 +1,4 @@
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import type { Command } from "commander";
 import { z } from "zod";
 import { CONFIG_FILE, GLOBAL_CONFIG, configSchema, isGitignored, saveConfig } from "../core/config.js";
@@ -95,7 +95,7 @@ async function runSetup(path: string, mode: OutputMode): Promise<void> {
   const ignored = path === GLOBAL_CONFIG ? undefined : isGitignored(path);
   const warning =
     ignored === false
-      ? `${CONFIG_FILE} is not in .gitignore. Add it so the token is never committed.`
+      ? `${basename(path)} is not ignored by git (add it to .gitignore, or \`git rm --cached\` it if tracked) so the token is never committed.`
       : undefined;
 
   printResult(

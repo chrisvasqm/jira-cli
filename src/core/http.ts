@@ -93,11 +93,22 @@ export class HttpClient {
   }
 
   private async decode<T>(res: Response, method: string, path: string): Promise<T> {
-    if (res.status === 401 || res.status === 403) {
+    if (res.status === 401) {
       throw new CliError("AUTH_FAILED", "Jira rejected the credentials (check email, token, and URL).");
     }
+    if (res.status === 403) {
+      const text = await res.text();
+      throw new CliError(
+        "FORBIDDEN",
+        `Your account lacks permission for ${method} ${path}`,
+        parseJson(text) ?? text,
+      );
+    }
     if (res.status === 404) {
-      throw new CliError("NOT_FOUND", `Jira has no resource at ${path}`);
+      throw new CliError(
+        "NOT_FOUND",
+        `Jira has no resource at ${path} (check that ${this.creds.baseUrl} is your Jira site)`,
+      );
     }
     if (!res.ok) {
       const text = await res.text();
