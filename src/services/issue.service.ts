@@ -21,6 +21,11 @@ export class IssueService {
       .catch(ticketNotFound(key));
   }
 
+  /** POST /issue. `fields` must hold project, issuetype and summary. */
+  create(edit: IssueEdit): Promise<{ id: string; key: string }> {
+    return this.http.post<{ id: string; key: string }>("/rest/api/3/issue", edit);
+  }
+
   /** PUT /issue/{key}: `fields` sets values, `update` applies operations such as label add/remove. */
   async update(key: string, edit: IssueEdit): Promise<void> {
     await this.http
