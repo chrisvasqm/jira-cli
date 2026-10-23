@@ -72,7 +72,7 @@ export function registerBoard(program: Command): void {
 
 /** Checks the flags and returns --limit as a number. */
 function validate(opts: BoardOptions): number {
-  const limit = intInRange(opts.limit, "--limit", 1, 999_999_999);
+  const limit = intInRange(opts.limit, "--limit", 1);
   if (opts.sprint !== undefined && !["active", "all"].includes(opts.sprint) && !/^\d+$/.test(opts.sprint)) {
     throw new CliError("USAGE", "--sprint takes 'active', 'all' or a numeric sprint id");
   }

@@ -1,10 +1,16 @@
 import type { Command } from "commander";
 import { adfToText } from "../../core/adf.js";
-import { intInRange, issueKey, ticketNotFound } from "../../core/args.js";
+import { intInRange, issueKey } from "../../core/args.js";
 import { bootstrap } from "../../core/bootstrap.js";
-import { summarize, type CommentView, type IssueDetail, type IssueSummary } from "../../core/jira-types.js";
+import {
+  summarize,
+  toCommentView,
+  type CommentView,
+  type IssueDetail,
+  type IssueSummary,
+} from "../../core/jira-types.js";
 import { printResult, table } from "../../core/output.js";
-import { CommentService, toCommentView } from "../../services/comment.service.js";
+import { CommentService } from "../../services/comment.service.js";
 import { IssueService } from "../../services/issue.service.js";
 
 interface ViewOptions {
@@ -41,7 +47,7 @@ export function registerView(ticket: Command): void {
       const [issue, comments] = await Promise.all([
         new IssueService().get(key),
         limit > 0 ? new CommentService().latest(key, limit) : Promise.resolve(undefined),
-      ]).catch(ticketNotFound(key));
+      ]);
       const view = toView(issue, `${config.baseUrl}/browse/${issue.key}`, {
         total: comments?.total ?? null,
         shown: (comments?.comments ?? []).map(toCommentView),
@@ -64,17 +70,22 @@ function toView(issue: IssueDetail, url: string, comments: TicketView["comments"
   };
 }
 
-function pad(n: number): string {
-  return String(n).padStart(2, "0");
-}
+const LOCAL_TIME = new Intl.DateTimeFormat("en-CA", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+  timeZoneName: "shortOffset",
+});
 
 /** Local time, e.g. "2026-10-23 14:05 GMT-4". JSON output keeps Jira's ISO string. */
 function day(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
-  const offset = -date.getTimezoneOffset() / 60;
-  const zone = `GMT${offset >= 0 ? "+" : ""}${offset}`;
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())} ${zone}`;
+  const part = Object.fromEntries(LOCAL_TIME.formatToParts(date).map(({ type, value }) => [type, value]));
+  return `${part["year"]}-${part["month"]}-${part["day"]} ${part["hour"]}:${part["minute"]} ${part["timeZoneName"]}`;
 }
 
 function renderHuman(view: TicketView): string {

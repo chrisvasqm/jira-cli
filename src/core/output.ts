@@ -11,23 +11,15 @@ export function printResult(mode: OutputMode, data: unknown, human: () => string
   process.stdout.write(`${stripControls(human())}\n`);
 }
 
+/** Control and invisible format characters, except newline, tab and the zero-width joiner emoji use. */
+const HIDDEN = /(?![\n\t\u200d])[\p{Cc}\p{Cf}]/gu;
+
 /**
  * Jira text is user-written, so drop terminal escape sequences, control characters
- * (except newline and tab) and invisible bidi or zero-width marks before it reaches a terminal.
+ * and invisible bidi or zero-width marks before it reaches a terminal.
  */
-export function stripControls(text: string): string {
-  return [...stripVTControlCharacters(text)].filter((char) => !isHidden(char.codePointAt(0) ?? 0)).join("");
-}
-
-function isHidden(code: number): boolean {
-  if (code === 0x0a || code === 0x09) return false;
-  return (
-    code < 0x20 ||
-    (code >= 0x7f && code <= 0x9f) ||
-    (code >= 0x200b && code <= 0x200f) ||
-    (code >= 0x202a && code <= 0x202e) ||
-    (code >= 0x2066 && code <= 0x2069)
-  );
+function stripControls(text: string): string {
+  return stripVTControlCharacters(text).replace(HIDDEN, "");
 }
 
 export function printError(mode: OutputMode, err: unknown): void {

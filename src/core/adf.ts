@@ -19,11 +19,11 @@ function children(node: AdfNode): string[] {
   return (node.content ?? []).map(render);
 }
 
-/** Join block-level children with one blank line, skipping empty blocks. */
-function blocks(node: AdfNode): string {
+/** Join non-empty children, by default as blocks separated by one blank line. */
+function blocks(node: AdfNode, separator = "\n\n"): string {
   return children(node)
     .filter((block) => block.trim().length > 0)
-    .join("\n\n");
+    .join(separator);
 }
 
 function attr(node: AdfNode, name: string): string {
@@ -47,9 +47,11 @@ function inline(node: AdfNode): string {
 
 /** Wrap inside surrounding spaces: "bold " becomes "**bold** ", which Markdown reads as emphasis. */
 function wrapTrimmed(body: string, wrap: string): string {
-  const match = /^(\s*)([\s\S]*?)(\s*)$/.exec(body);
-  if (!match?.[2]) return body;
-  return `${match[1]}${wrap}${match[2]}${wrap}${match[3]}`;
+  const core = body.trim();
+  if (!core) return body;
+  const lead = body.length - body.trimStart().length;
+  const tail = body.length - body.trimEnd().length;
+  return `${body.slice(0, lead)}${wrap}${core}${wrap}${body.slice(body.length - tail)}`;
 }
 
 /** Longest run of backticks in text, so fences can be made longer than it. */
@@ -73,9 +75,8 @@ function codeBlock(node: AdfNode): string {
 function taskItems(node: AdfNode): string {
   return (node.content ?? [])
     .map((item) => {
-      const done = item.attrs?.["state"] === "DONE" || item.attrs?.["state"] === "DECIDED";
-      const box = item.type === "decisionItem" ? "-" : done ? "- [x]" : "- [ ]";
-      if (item.type === "taskList") return quoteWith("  ", taskItems(item));
+      if (item.type === "taskList") return prefixLines("  ", taskItems(item));
+      const box = item.type === "decisionItem" ? "-" : item.attrs?.["state"] === "DONE" ? "- [x]" : "- [ ]";
       return `${box} ${children(item).join("")}`;
     })
     .join("\n");
@@ -96,11 +97,7 @@ function listItems(node: AdfNode, ordered: boolean): string {
 }
 
 function cell(node: AdfNode): string {
-  return children(node)
-    .filter((part) => part.trim().length > 0)
-    .join("<br>")
-    .replaceAll("\n", "<br>")
-    .replaceAll("|", "\\|");
+  return blocks(node, "<br>").replaceAll("\n", "<br>").replaceAll("|", "\\|");
 }
 
 function table(node: AdfNode): string {
@@ -131,7 +128,7 @@ function date(node: AdfNode): string {
 function render(node: AdfNode): string {
   switch (node.type) {
     case "blockquote":
-      return quote(blocks(node));
+      return prefixLines("> ", blocks(node));
     case "doc":
     case "panel":
     case "expand":
@@ -183,11 +180,7 @@ function render(node: AdfNode): string {
   }
 }
 
-function quote(text: string): string {
-  return quoteWith("> ", text);
-}
-
-function quoteWith(prefix: string, text: string): string {
+function prefixLines(prefix: string, text: string): string {
   return text
     .split("\n")
     .map((line) => prefix + line)
