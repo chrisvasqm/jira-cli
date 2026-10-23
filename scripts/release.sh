@@ -19,8 +19,10 @@ git fetch -q origin main --tags || die "git fetch failed (a local tag may confli
 head=$(git rev-parse HEAD)
 [ "$head" = "$(git rev-parse origin/main)" ] || die "main is not level with origin/main (git pull --ff-only)"
 [ -f "$notes" ] || die "missing $notes"
-[ "$(git log -1 --format=%H -- "$notes")" = "$head" ] ||
-  die "HEAD is not the commit that added $notes; other changes merged after it need their own version bump"
+notes_commit=$(git log -1 --format=%H -- "$notes")
+shipped_changes=$(git diff --name-only "$notes_commit" HEAD -- src package.json pnpm-lock.yaml tsconfig.json)
+[ -z "$shipped_changes" ] ||
+  die "code changed after $notes was added ($shipped_changes); those changes need their own version bump"
 grep -qF "releases/download/$tag/$asset_name" "$notes" || die "$notes must link releases/download/$tag/$asset_name"
 if tagged=$(git rev-parse -q --verify "refs/tags/$tag^{commit}"); then
   [ "$tagged" = "$head" ] || die "$tag exists on another commit; bump the version in the PR first"
@@ -40,6 +42,8 @@ else
   esac
 fi
 
+pnpm install --frozen-lockfile >&2 || die "pnpm install failed"
+rm -rf dist
 pnpm check >&2 || die "pnpm check failed (output above)"
 
 out=$(mktemp -d)
@@ -47,13 +51,9 @@ trap 'rm -rf "$out"' EXIT
 pnpm pack --pack-destination "$out" >/dev/null
 tarball=$(ls "$out"/*.tgz)
 listing=$(tar -tzf "$tarball")
-unexpected=$(grep -vE '^package/(package\.json|README\.md|dist/.+\.js)$' <<<"$listing" || true)
+unexpected=$(grep -vE '^package/(package\.json|README\.md|LICEN[CS]E(\.md)?|dist/.+\.(js|d\.ts|js\.map))$' <<<"$listing" || true)
 [ -z "$unexpected" ] || die "tarball has unexpected files: $unexpected"
 grep -qx 'package/dist/index.js' <<<"$listing" || die "tarball is missing dist/index.js"
-for js in $(grep -E '^package/dist/.+\.js$' <<<"$listing"); do
-  src="src/${js#package/dist/}"
-  [ -f "${src%.js}.ts" ] || die "stale build file $js has no source; run rm -rf dist && pnpm build"
-done
 asset="$out/$asset_name"
 [ "$tarball" = "$asset" ] || mv "$tarball" "$asset"
 

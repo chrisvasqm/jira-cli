@@ -37,4 +37,4 @@ Every feature or fix PR ships a release:
 
 1. In the PR, bump the version: `pnpm bump minor` for a new command or visible feature, `pnpm bump patch` for fixes only. `1.0.0` comes when the roadmap is complete.
 2. In the same PR, add `release-notes/vX.Y.Z.md`: English first, then Español, in plain non-technical language (what users can now do, how to install).
-3. After the PR merges, sync `main` and run `pnpm release`. It needs `gh` logged in (`gh auth login`) with push access. If it fails after tagging, fix the cause and rerun it. It checks the tree, runs `pnpm check`, packs the CLI, tags the merge commit, and creates the GitHub release with the notes and the install tarball.
+3. After the PR merges, sync `main` and run `pnpm release` before the next code PR merges (docs-only merges in between are fine). It needs `gh` logged in (`gh auth login`) with push access. If it fails after tagging, fix the cause and rerun it. It checks the tree, runs `pnpm check`, packs the CLI, tags the merge commit, and creates the GitHub release with the notes and the install tarball.

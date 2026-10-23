@@ -21,7 +21,7 @@
     "lint": "oxlint src",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "bump": "pnpm version --no-git-tag-version",
+    "bump": "pnpm version --no-git-tag-version --no-git-checks",
     "release": "bash scripts/release.sh"
   },
   "license": "ISC",
