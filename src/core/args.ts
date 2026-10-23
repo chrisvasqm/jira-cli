@@ -9,7 +9,19 @@ export function issueKey(raw: string): string {
   return key;
 }
 
-export function nonNegativeInt(raw: string, flag: string): number {
-  if (!/^\d+$/.test(raw)) throw new CliError("USAGE", `${flag} must be a whole number`);
-  return Number(raw);
+/** Whole number >= min, written as plain digits. */
+export function intAtLeast(raw: string, flag: string, min: number): number {
+  const value = /^\d+$/.test(raw) ? Number(raw) : Number.NaN;
+  if (!(value >= min)) throw new CliError("USAGE", `${flag} must be a whole number of at least ${min}`);
+  return value;
+}
+
+/** Map Jira's 404 for an issue URL to a clear message about the key. */
+export function ticketNotFound(key: string): (err: unknown) => never {
+  return (err: unknown) => {
+    if (err instanceof CliError && err.code === "NOT_FOUND") {
+      throw new CliError("TICKET_NOT_FOUND", `Ticket ${key} does not exist or you cannot see it.`);
+    }
+    throw err;
+  };
 }

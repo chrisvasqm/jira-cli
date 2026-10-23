@@ -5,7 +5,6 @@ import type { Comment, CommentView } from "../core/jira-types.js";
 interface CommentPage {
   comments: Comment[];
   total: number;
-  startAt: number;
 }
 
 export function toCommentView(comment: Comment): CommentView {
@@ -22,18 +21,12 @@ export function toCommentView(comment: Comment): CommentView {
 export class CommentService {
   constructor(private readonly http = HttpClient.get()) {}
 
-  /** Newest `limit` comments, returned oldest first so they read like a conversation. */
+  /** Newest `limit` (>= 1) comments, returned oldest first so they read like a conversation. */
   async latest(key: string, limit: number): Promise<{ comments: Comment[]; total: number }> {
-    if (limit === 0) {
-      const page = await this.page(key, 0, 0, "-created");
-      return { comments: [], total: page.total };
-    }
-    const page = await this.page(key, 0, limit, "-created");
+    const params = new URLSearchParams({ startAt: "0", maxResults: String(limit), orderBy: "-created" });
+    const page = await this.http.get<CommentPage>(
+      `/rest/api/3/issue/${encodeURIComponent(key)}/comment?${params}`,
+    );
     return { comments: page.comments.toReversed(), total: page.total };
-  }
-
-  private page(key: string, startAt: number, maxResults: number, orderBy: string): Promise<CommentPage> {
-    const params = new URLSearchParams({ startAt: String(startAt), maxResults: String(maxResults), orderBy });
-    return this.http.get<CommentPage>(`/rest/api/3/issue/${encodeURIComponent(key)}/comment?${params}`);
   }
 }

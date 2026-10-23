@@ -1,6 +1,6 @@
 /**
  * Atlassian Document Format (ADF) helpers. Jira Cloud v3 stores descriptions and
- * comments as ADF; the CLI shows them as Markdown-like text and accepts plain text.
+ * comments as ADF; the CLI shows them as Markdown-like text.
  */
 export interface AdfNode {
   type: string;
@@ -10,23 +10,25 @@ export interface AdfNode {
   marks?: { type: string; attrs?: Record<string, unknown> }[];
 }
 
-export interface AdfDoc {
-  type: "doc";
-  version: 1;
-  content: AdfNode[];
-}
-
-const BLOCK_SEPARATOR = "\n\n";
-
 export function adfToText(node: AdfNode | null | undefined): string {
   if (!node) return "";
-  return render(node, "")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
+  return render(node).trim();
 }
 
-function children(node: AdfNode, indent: string): string[] {
-  return (node.content ?? []).map((child) => render(child, indent));
+function children(node: AdfNode): string[] {
+  return (node.content ?? []).map(render);
+}
+
+/** Join block-level children with one blank line, skipping empty blocks. */
+function blocks(node: AdfNode): string {
+  return children(node)
+    .filter((block) => block.trim().length > 0)
+    .join("\n\n");
+}
+
+function attr(node: AdfNode, name: string): string {
+  const value = node.attrs?.[name];
+  return typeof value === "string" ? value : "";
 }
 
 function inline(node: AdfNode): string {
@@ -37,45 +39,64 @@ function inline(node: AdfNode): string {
   return typeof link === "string" && link !== text ? `[${body}](${link})` : body;
 }
 
-function listItems(node: AdfNode, indent: string, ordered: boolean): string {
+/** Continuation lines of an item are indented under its bullet, which also nests sublists. */
+function listItems(node: AdfNode, ordered: boolean): string {
+  const start = Number(node.attrs?.["order"] ?? 1);
+  const first = Number.isFinite(start) ? start : 1;
   return (node.content ?? [])
     .map((item, index) => {
-      const bullet = ordered ? `${index + 1}.` : "-";
-      const body = children(item, `${indent}  `).join("\n").trim();
-      return `${indent}${bullet} ${body}`;
+      const bullet = ordered ? `${first + index}.` : "-";
+      const pad = " ".repeat(bullet.length + 1);
+      const [head = "", ...rest] = children(item).join("\n").split("\n");
+      return [`${bullet} ${head}`, ...rest.map((line) => (line ? pad + line : line))].join("\n");
     })
     .join("\n");
 }
 
-function attr(node: AdfNode, name: string): string {
-  const value = node.attrs?.[name];
-  return typeof value === "string" ? value : "";
+function cell(node: AdfNode): string {
+  return children(node)
+    .filter((part) => part.trim().length > 0)
+    .join("<br>")
+    .replaceAll("\n", "<br>")
+    .replaceAll("|", "\\|");
 }
 
-function render(node: AdfNode, indent: string): string {
+function table(node: AdfNode): string {
+  const rows = (node.content ?? []).map((row) => `| ${(row.content ?? []).map(cell).join(" | ")} |`);
+  const width = node.content?.[0]?.content?.length ?? 0;
+  if (rows.length === 0 || width === 0) return "";
+  const separator = `|${" --- |".repeat(width)}`;
+  return [rows[0], separator, ...rows.slice(1)].join("\n");
+}
+
+function date(node: AdfNode): string {
+  const parsed = new Date(Number(node.attrs?.["timestamp"]));
+  return Number.isNaN(parsed.getTime()) ? "[date]" : parsed.toISOString().slice(0, 10);
+}
+
+function render(node: AdfNode): string {
   switch (node.type) {
     case "doc":
-      return children(node, indent).join(BLOCK_SEPARATOR);
+    case "blockquote":
+    case "panel":
+    case "expand":
+      return node.type === "blockquote" ? quote(blocks(node)) : blocks(node);
+    case "listItem":
+      return children(node).join("\n");
     case "text":
       return inline(node);
     case "hardBreak":
       return "\n";
     case "paragraph":
-      return children(node, indent).join("");
+      return children(node).join("");
     case "heading":
-      return `${"#".repeat(Number(node.attrs?.["level"] ?? 1))} ${children(node, indent).join("")}`;
+      return `${"#".repeat(Number(node.attrs?.["level"] ?? 1))} ${children(node).join("")}`;
     case "bulletList":
-      return listItems(node, indent, false);
+      return listItems(node, false);
     case "orderedList":
-      return listItems(node, indent, true);
+      return listItems(node, true);
     case "codeBlock":
-      return `\`\`\`${attr(node, "language")}\n${children(node, indent).join("")}\n\`\`\``;
-    case "blockquote":
-      return children(node, indent)
-        .join(BLOCK_SEPARATOR)
-        .split("\n")
-        .map((line) => `> ${line}`)
-        .join("\n");
+      return `\`\`\`${attr(node, "language")}\n${children(node).join("")}\n\`\`\``;
     case "rule":
       return "---";
     case "mention":
@@ -88,39 +109,21 @@ function render(node: AdfNode, indent: string): string {
     case "status":
       return `[${attr(node, "text")}]`;
     case "date":
-      return new Date(Number(node.attrs?.["timestamp"])).toISOString().slice(0, 10);
+      return date(node);
     case "table":
-      return (node.content ?? [])
-        .map(
-          (row) =>
-            `| ${(row.content ?? []).map((cell) => children(cell, "").join(" ").trim()).join(" | ")} |`,
-        )
-        .join("\n");
+      return table(node);
     case "mediaSingle":
     case "mediaGroup":
     case "media":
       return "[attachment]";
     default:
-      return children(node, indent).join(node.type.endsWith("List") ? "\n" : "");
+      return children(node).join("");
   }
 }
 
-/** Plain text to ADF: blank lines split paragraphs, single newlines become hard breaks. */
-export function textToAdf(text: string): AdfDoc {
-  const paragraphs = text
-    .replace(/\r\n/g, "\n")
-    .split(/\n{2,}/)
-    .map((block) => block.trim())
-    .filter((block) => block.length > 0);
-  return {
-    type: "doc",
-    version: 1,
-    content: paragraphs.map((block) => ({
-      type: "paragraph",
-      content: block.split("\n").flatMap((line, index): AdfNode[] => {
-        const textNode: AdfNode = { type: "text", text: line };
-        return index === 0 ? [textNode] : [{ type: "hardBreak" }, textNode];
-      }),
-    })),
-  };
+function quote(text: string): string {
+  return text
+    .split("\n")
+    .map((line) => `> ${line}`)
+    .join("\n");
 }

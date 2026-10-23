@@ -1,6 +1,6 @@
 import type { Command } from "commander";
 import { adfToText } from "../../core/adf.js";
-import { issueKey, nonNegativeInt } from "../../core/args.js";
+import { intAtLeast, issueKey, ticketNotFound } from "../../core/args.js";
 import { bootstrap } from "../../core/bootstrap.js";
 import type { CommentView, IssueDetail } from "../../core/jira-types.js";
 import { printResult, table } from "../../core/output.js";
@@ -25,7 +25,8 @@ export interface TicketView {
   created: string;
   updated: string;
   description: string;
-  comments: { total: number; shown: CommentView[] };
+  /** total is null when comments were not requested (--comments 0). */
+  comments: { total: number | null; shown: CommentView[] };
 }
 
 export function registerView(ticket: Command): void {
@@ -35,15 +36,15 @@ export function registerView(ticket: Command): void {
     .option("--comments <n>", "How many of the latest comments to show (0 for none)", "5")
     .action(async (rawKey: string, opts: ViewOptions, cmd: Command) => {
       const key = issueKey(rawKey);
-      const limit = nonNegativeInt(opts.comments, "--comments");
+      const limit = intAtLeast(opts.comments, "--comments", 0);
       const { config, mode } = bootstrap(cmd);
       const [issue, comments] = await Promise.all([
         new IssueService().get(key),
-        new CommentService().latest(key, limit),
-      ]);
+        limit > 0 ? new CommentService().latest(key, limit) : Promise.resolve(undefined),
+      ]).catch(ticketNotFound(key));
       const view = toView(issue, `${config.baseUrl}/browse/${issue.key}`, {
-        total: comments.total,
-        shown: comments.comments.map(toCommentView),
+        total: comments?.total ?? null,
+        shown: (comments?.comments ?? []).map(toCommentView),
       });
       printResult(mode, view, () => renderHuman(view));
     });
@@ -91,7 +92,7 @@ function renderHuman(view: TicketView): string {
     `Description\n\n${view.description || "(none)"}`,
   ];
   const { total, shown } = view.comments;
-  if (total > 0) {
+  if (total !== null && total > 0) {
     const heading =
       shown.length < total ? `Comments (latest ${shown.length} of ${total})` : `Comments (${total})`;
     const bodies = shown.map(
