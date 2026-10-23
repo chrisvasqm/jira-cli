@@ -3,9 +3,16 @@
   "version": "0.1.0",
   "description": "Small Jira CLI for humans and agents",
   "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
   "bin": {
     "jira": "./dist/index.js"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "dev": "tsx src/index.ts",
     "build": "tsc -p tsconfig.json",
@@ -13,7 +20,9 @@
     "check": "pnpm typecheck && pnpm build && pnpm lint && pnpm format:check",
     "lint": "oxlint src",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "bump": "pnpm version --no-git-tag-version --no-git-checks",
+    "release": "bash scripts/release.sh"
   },
   "license": "ISC",
   "devEngines": {

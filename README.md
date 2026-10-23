@@ -2,7 +2,11 @@
 
 A small command-line tool for working with Jira from the terminal as an alternative to the official JIRA MCP to consume less tokens while using agents.
 
-## Getting started
+## Install
+
+Download the latest release from the [Releases page](https://github.com/chrisvasqm/jira-cli/releases). Each release lists a one-line `npm install -g` command. You need Node.js 24 or newer.
+
+## Getting started (development)
 
 ```sh
 pnpm install
@@ -26,3 +30,11 @@ Create an API token at https://id.atlassian.com/manage/api-tokens.
 ## Output
 
 Every command prints a human-readable result by default. Add `--json` for `{ "ok": true, "data": ... }` or `{ "ok": false, "error": { "code", "message", "details" } }` with a non-zero exit code on failure.
+
+## Releasing
+
+Every feature or fix PR ships a release:
+
+1. In the PR, bump the version: `pnpm bump minor` for a new command or visible feature, `pnpm bump patch` for fixes only. `1.0.0` comes when the roadmap is complete.
+2. In the same PR, add `release-notes/vX.Y.Z.md`: English first, then Español, in plain non-technical language (what users can now do, how to install).
+3. After the PR merges, sync `main` and run `pnpm release` before the next code PR merges (docs-only merges in between are fine). It needs `gh` logged in (`gh auth login`) with push access. If it fails after tagging, fix the cause and rerun it. It checks the tree, runs `pnpm check`, packs the CLI, tags the merge commit, and creates the GitHub release with the notes and the install tarball.
