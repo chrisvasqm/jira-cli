@@ -1,28 +1,37 @@
 {
   "name": "jira-cli",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "dev": "tsx app.ts"
+  "version": "0.1.0",
+  "description": "Small Jira CLI for humans and agents",
+  "type": "module",
+  "bin": {
+    "jira": "./dist/index.js"
   },
-  "keywords": [],
-  "author": "",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "check": "pnpm typecheck && pnpm build && pnpm lint && pnpm format:check",
+    "lint": "oxlint src",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
   "license": "ISC",
   "devEngines": {
     "packageManager": {
       "name": "pnpm",
-      "version": "^11.22.0",
+      "version": "11.28.8",
       "onFail": "download"
     }
   },
-  "type": "module",
   "dependencies": {
-    "@types/node": "^26.6.5",
-    "commander": "^15.0.0",
-    "dotenv": "^18.0.9",
-    "esbuild": "^0.28.2",
-    "tsx": "^4.23.15",
-    "typescript": "^7.0.2"
+    "commander": "15.0.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.5",
+    "oxlint": "1.88.0",
+    "prettier": "3.9.10",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2"
   }
 }
