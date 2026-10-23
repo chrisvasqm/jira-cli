@@ -14,7 +14,8 @@ export interface BoardColumn {
 }
 
 export interface BoardConfig {
-  type: "scrum" | "kanban" | "simple" | string;
+  /** "scrum", "kanban" or "simple" as reported by Jira. */
+  type: string;
   columns: BoardColumn[];
 }
 
@@ -45,14 +46,18 @@ export const ISSUE_LIST_FIELDS = "summary,status,issuetype,priority,assignee,upd
 export class BoardService {
   constructor(private readonly http = HttpClient.get()) {}
 
-  async listAll(): Promise<Board[]> {
-    const boards: Board[] = [];
-    let startAt = 0;
+  listAll(): Promise<Board[]> {
+    return this.pageAll<Board>("/rest/agile/1.0/board", {});
+  }
+
+  /** Follow startAt/isLast pagination for `values`-style Agile endpoints. */
+  private async pageAll<T>(path: string, query: Record<string, string>): Promise<T[]> {
+    const items: T[] = [];
     for (;;) {
-      const page = await this.http.get<Page<Board>>(`/rest/agile/1.0/board?startAt=${startAt}&maxResults=50`);
-      boards.push(...page.values);
-      if (page.isLast || page.values.length === 0) return boards;
-      startAt += page.values.length;
+      const params = new URLSearchParams({ ...query, startAt: String(items.length), maxResults: "50" });
+      const page = await this.http.get<Page<T>>(`${path}?${params}`);
+      items.push(...page.values);
+      if (page.isLast || page.values.length === 0) return items;
     }
   }
 
@@ -67,11 +72,8 @@ export class BoardService {
     };
   }
 
-  async sprints(boardId: number, state: string): Promise<Sprint[]> {
-    const page = await this.http.get<Page<Sprint>>(
-      `/rest/agile/1.0/board/${boardId}/sprint?state=${encodeURIComponent(state)}&maxResults=50`,
-    );
-    return page.values;
+  sprints(boardId: number, state: string): Promise<Sprint[]> {
+    return this.pageAll<Sprint>(`/rest/agile/1.0/board/${boardId}/sprint`, { state });
   }
 
   /**
@@ -97,8 +99,11 @@ export class BoardService {
       const page = await this.http.get<IssuePage>(`/rest/agile/1.0/board/${boardId}/issue?${params}`);
       issues.push(...page.issues);
       total = page.total ?? total;
-      hasMore = page.issues.length === pageSize && (total === undefined || issues.length < total);
+      hasMore = total === undefined ? page.issues.length === pageSize : issues.length < total;
     }
+    // Without a total from Jira we can only report what we fetched; a full last page
+    // may or may not mean more exist, so hasMore stays true only when total is known.
+    if (total === undefined) hasMore = false;
     return { issues, total: total ?? issues.length, hasMore };
   }
 }
