@@ -16,8 +16,8 @@ const program = new Command()
   .name("jira")
   .description("Jira from the terminal, for humans and agents")
   .version(version, "-v, --version", "Print the version")
-  .option("--json", "Machine-readable output")
-  .option("--config <path>", "Path to a config file (default: nearest .jira-cli.json)")
+  .option("-j, --json", "Machine-readable output")
+  .option("-c, --config <path>", "Path to a config file (default: nearest .jira-cli.json)")
   .exitOverride()
   // Commander's own error lines are dropped (printError reports them); help text still prints.
   .configureOutput({ outputError: () => undefined });

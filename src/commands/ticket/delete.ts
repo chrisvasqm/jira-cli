@@ -15,7 +15,7 @@ export function registerDelete(ticket: Command): void {
     .command("delete <key>")
     .description("Delete a ticket (asks first; --yes skips the question)")
     .option("-y, --yes", "Delete without asking")
-    .option("--with-subtasks", "Also delete its sub-tasks (Jira refuses otherwise)")
+    .option("-w, --with-subtasks", "Also delete its sub-tasks (Jira refuses otherwise)")
     .action(async (rawKey: string, opts: DeleteOptions, cmd: Command) => {
       const key = issueKey(rawKey);
       const { mode } = bootstrap(cmd);

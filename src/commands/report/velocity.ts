@@ -30,8 +30,8 @@ export function registerVelocity(report: Command): void {
   report
     .command("velocity")
     .description("Tickets and points done in each recent closed sprint")
-    .option("--board <id>", "Board id (default: the configured board)")
-    .option("--sprints <n>", "How many recent closed sprints", "6")
+    .option("-b, --board <id>", "Board id (default: the configured board)")
+    .option("-s, --sprints <n>", "How many recent closed sprints", "6")
     .action(async (opts: VelocityOptions, cmd: Command) => {
       const count = intInRange(opts.sprints, "--sprints", 1, 50);
       const ctx = await reportContext(opts, cmd);

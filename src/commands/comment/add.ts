@@ -15,7 +15,7 @@ export function registerAdd(comment: Command): void {
   comment
     .command("add <key> [text]")
     .description("Add a comment. Blank lines split paragraphs; ``` fences make code blocks")
-    .option("--file <path>", "Read the comment from a file (- reads stdin)")
+    .option("-f, --file <path>", "Read the comment from a file (- reads stdin)")
     .action(async (rawKey: string, inline: string | undefined, opts: AddOptions, cmd: Command) => {
       const key = issueKey(rawKey);
       const text = await readText(inline, opts.file, "comment");

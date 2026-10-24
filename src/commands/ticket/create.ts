@@ -36,9 +36,9 @@ export function registerCreate(ticket: Command): void {
   const create = ticket
     .command("create")
     .description("Create a ticket in the configured project")
-    .option("--type <name>", "Issue type, e.g. Task, Bug, Story", "Task")
-    .option("--parent <key>", "Parent ticket (epic, or the story of a sub-task)")
-    .option("--project <key>", "Project key (default: projectKey from config)");
+    .option("-t, --type <name>", "Issue type, e.g. Task, Bug, Story", "Task")
+    .option("-P, --parent <key>", "Parent ticket (epic, or the story of a sub-task)")
+    .option("-k, --project <key>", "Project key (default: projectKey from config)");
   fieldOptions(create, "create").action(async (opts: CreateOptions, cmd: Command) => {
     if (!opts.summary?.trim()) throw new CliError("USAGE", "--summary is required");
     const parent = opts.parent === undefined ? undefined : issueKey(opts.parent);

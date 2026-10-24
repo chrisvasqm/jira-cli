@@ -37,7 +37,7 @@ export function registerView(ticket: Command): void {
     .command("view <key>")
     .description("Show a ticket's details, description and latest comments")
     .option(
-      "--comments <n>",
+      "-n, --comments <n>",
       `How many of the latest comments to show (0 for none, at most ${MAX_LATEST})`,
       "5",
     )

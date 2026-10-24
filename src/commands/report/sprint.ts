@@ -31,7 +31,7 @@ export function registerSprint(report: Command): void {
   report
     .command("sprint [id]")
     .description("One sprint: planned vs done, by person and status, points, what is not done")
-    .option("--board <id>", "Board id (default: the configured board)")
+    .option("-b, --board <id>", "Board id (default: the configured board)")
     .action(async (rawId: string | undefined, opts: ReportOptions, cmd: Command) => {
       const sprintId = rawId === undefined ? undefined : intInRange(rawId, "sprint id", 1);
       const ctx = await reportContext(opts, cmd);

@@ -20,7 +20,7 @@ export function registerList(comment: Command): void {
   comment
     .command("list <key>")
     .description("Show a ticket's comments, oldest first")
-    .option("--limit <n>", "Maximum comments to fetch", "50")
+    .option("-n, --limit <n>", "Maximum comments to fetch", "50")
     .action(async (rawKey: string, opts: ListOptions, cmd: Command) => {
       const key = issueKey(rawKey);
       const limit = intInRange(opts.limit, "--limit", 1);
