@@ -68,6 +68,10 @@ export class BoardService {
     }
   }
 
+  get(boardId: number): Promise<Board> {
+    return this.http.get<Board>(`/rest/agile/1.0/board/${boardId}`);
+  }
+
   async configuration(boardId: number): Promise<BoardConfig> {
     const cfg = await this.http.get<BoardConfiguration>(`/rest/agile/1.0/board/${boardId}/configuration`);
     return {

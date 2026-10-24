@@ -1,13 +1,12 @@
 import type { Command } from "commander";
-import { intInRange } from "../core/args.js";
-import { bootstrap } from "../core/bootstrap.js";
-import { CliError } from "../core/errors.js";
-import { summarize, type Issue, type IssueSummary } from "../core/jira-types.js";
-import { printResult } from "../core/output.js";
-import { BoardService, type BoardConfig, type Sprint } from "../services/board.service.js";
+import { intInRange } from "../../core/args.js";
+import { bootstrap } from "../../core/bootstrap.js";
+import { CliError } from "../../core/errors.js";
+import { summarize, type Issue, type IssueSummary } from "../../core/jira-types.js";
+import { printResult } from "../../core/output.js";
+import { BoardService, type BoardConfig, type Sprint } from "../../services/board.service.js";
 
 interface BoardOptions {
-  board?: string;
   sprint?: string;
   status?: string;
   assignee?: string;
@@ -26,11 +25,10 @@ interface SprintScope {
   note: string | undefined;
 }
 
-export function registerBoard(program: Command): void {
-  program
-    .command("board")
-    .description("List the tickets on the configured board, grouped by column")
-    .option("--board <id>", "Board id (default: boardId from config)")
+export function registerView(board: Command): void {
+  board
+    .command("view [id]", { isDefault: true })
+    .description("Show a board's tickets grouped by column (default: the configured board)")
     .option(
       "--sprint <active|id|all>",
       "Sprint boards default to active sprints; 'all' lists every board issue",
@@ -40,10 +38,11 @@ export function registerBoard(program: Command): void {
     .option("--jql <query>", "Extra JQL appended with AND")
     .option("--order-by <fields>", "JQL sort, e.g. 'updated DESC'")
     .option("--limit <n>", "Maximum issues to fetch", "100")
-    .action(async (opts: BoardOptions, cmd: Command) => {
+    .action(async (rawId: string | undefined, opts: BoardOptions, cmd: Command) => {
       const limit = validate(opts);
+      const requested = rawId === undefined ? undefined : intInRange(rawId, "board id", 1);
       const { config, mode } = bootstrap(cmd);
-      const boardId = opts.board === undefined ? config.boardId : intInRange(opts.board, "--board", 1);
+      const boardId = requested ?? config.boardId;
       const boards = new BoardService();
 
       const needsActive = opts.sprint === undefined || opts.sprint === "active";
