@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Publish the version in package.json as a GitHub release tagged v<version>.
 # Run on synced main right after the PR that bumped the version merged.
+# The release notes come from that PR's description, between <!-- release-notes --> markers.
 # Safe to rerun: reuses a tag already on HEAD and re-uploads a missing asset.
 # usage: pnpm release
 set -euo pipefail
@@ -9,7 +10,6 @@ die() { echo "release: $*" >&2; exit 1; }
 
 version=$(node -p "require('./package.json').version")
 tag="v$version"
-notes="release-notes/$tag.md"
 asset_name="jira-cli-$version.tgz"
 
 gh auth status >/dev/null 2>&1 || die "gh is not logged in (gh auth login)"
@@ -18,13 +18,23 @@ gh auth status >/dev/null 2>&1 || die "gh is not logged in (gh auth login)"
 git fetch -q origin main --tags || die "git fetch failed (a local tag may conflict with origin; check git tag -l $tag)"
 head=$(git rev-parse HEAD)
 [ "$head" = "$(git rev-parse origin/main)" ] || die "main is not level with origin/main (git pull --ff-only)"
-[ -f "$notes" ] || die "missing $notes"
-# The commit that added the notes (later typo fixes to the notes must not hide code changes).
-notes_commit=$(git log --diff-filter=A --format=%H -- "$notes" | tail -1)
-shipped_changes=$(git diff --name-only "$notes_commit" HEAD -- src package.json pnpm-lock.yaml tsconfig.json README.md)
+
+out=$(mktemp -d)
+trap 'rm -rf "$out"' EXIT
+
+# The squash commit that set this version; later commits may only touch docs.
+bump_commit=$(git log -1 --format=%H -G'"version":' -- package.json)
+shipped_changes=$(git diff --name-only "$bump_commit" HEAD -- src package.json pnpm-lock.yaml tsconfig.json README.md)
 [ -z "$shipped_changes" ] ||
-  die "code changed after $notes was added ($shipped_changes); those changes need their own version bump"
-grep -qF "releases/download/$tag/$asset_name" "$notes" || die "$notes must link releases/download/$tag/$asset_name"
+  die "code changed after the $tag bump ($shipped_changes); those changes need their own version bump"
+
+notes="$out/notes.md"
+gh api "repos/{owner}/{repo}/commits/$bump_commit/pulls" --jq '.[0].body // ""' |
+  tr -d '\r' |
+  awk '/<!-- \/release-notes -->/ { on = 0 } on { print } /<!-- release-notes -->/ { on = 1 }' >"$notes" ||
+  die "could not read the PR for $bump_commit"
+[ -s "$notes" ] || die "the PR that bumped to $tag has no notes between <!-- release-notes --> markers"
+grep -qF "releases/download/$tag/$asset_name" "$notes" || die "the $tag notes must link releases/download/$tag/$asset_name"
 if tagged=$(git rev-parse -q --verify "refs/tags/$tag^{commit}"); then
   [ "$tagged" = "$head" ] || die "$tag exists on another commit; bump the version in the PR first"
 fi
@@ -47,8 +57,6 @@ pnpm install --frozen-lockfile >&2 || die "pnpm install failed"
 rm -rf dist
 pnpm check >&2 || die "pnpm check failed (output above)"
 
-out=$(mktemp -d)
-trap 'rm -rf "$out"' EXIT
 pnpm pack --pack-destination "$out" >/dev/null
 tarball=$(ls "$out"/*.tgz)
 listing=$(tar -tzf "$tarball")
