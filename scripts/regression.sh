@@ -6,7 +6,8 @@ set -u
 REPO=${1:?repo path}
 J=(node "$REPO/dist/index.js")
 PASS=0 FAIL=0 SOFT=0
-KEY="" SUB="" SPR=""
+KEY="" SUB="" SPR="" LNK=""
+KEY="" SUB="" SPR="" RNK=""
 
 # run <name> <expect: ok|fail|soft> -- cmd...   (soft = may fail on some boards/projects)
 run() {
@@ -35,7 +36,9 @@ code_is() {
 
 cleanup() {
   [[ -n $SPR ]] && "${J[@]}" sprint delete "$SPR" -y -j >/dev/null 2>&1
+  [[ -n $LNK ]] && "${J[@]}" ticket delete "$LNK" -y -w -j >/dev/null 2>&1
   [[ -n $SUB ]] && "${J[@]}" ticket delete "$SUB" -y -j >/dev/null 2>&1
+  [[ -n $RNK ]] && "${J[@]}" ticket delete "$RNK" -y -j >/dev/null 2>&1
   [[ -n $KEY ]] && "${J[@]}" ticket delete "$KEY" -y -w -j >/dev/null 2>&1
 }
 trap cleanup EXIT
@@ -71,6 +74,21 @@ run "ticket edit -sp active" soft -- ticket edit "$KEY" -j -sp active
 run "ticket edit -sp none" soft -- ticket edit "$KEY" -j -sp none
 run "ticket move (list)" ok -- ticket move "$KEY" -j
 
+# Rank: a second throwaway ticket to rank against
+run "ticket create (rank target)" ok -- ticket create -j -s "Regression rank target (delete me)"
+RNK=$(jq -r '.data.key // empty' <<<"$LAST")
+if [[ -n $RNK ]]; then
+  run "ticket rank -bf" ok -- ticket rank "$KEY" -j -bf "$RNK"
+  run "ticket rank -af" ok -- ticket rank "$KEY" -j -af "$RNK"
+  run "ticket rank no target fails" fail -- ticket rank "$KEY" -j
+  run "ticket rank -bf -af fails" fail -- ticket rank "$KEY" -j -bf "$RNK" -af "$RNK"
+  run "ticket rank onto itself fails" fail -- ticket rank "$KEY" -j -bf "$KEY"
+  run "ticket rank unknown target fails" fail -- ticket rank "$KEY" -j -af "${KEY%%-*}-999999"
+  code_is "ticket rank unknown target: TICKET_NOT_FOUND" TICKET_NOT_FOUND
+  run "ticket delete (rank target)" ok -- ticket delete "$RNK" -j -y
+  [[ $(jq -r '.ok' <<<"$LAST") == true ]] && RNK=""
+fi
+
 # Comments
 run "comment add -f stdin" ok -- comment add "$KEY" -j -f - <<<"Comment from stdin"
 CID=$(jq -r '.data.comment.id // empty' <<<"$LAST")
@@ -95,6 +113,36 @@ if [[ -n $WID ]]; then
   run "worklog delete unknown fails" fail -- worklog delete "$KEY" 999999999 -j -y
   code_is "worklog delete unknown: WORKLOG_NOT_FOUND" WORKLOG_NOT_FOUND
 fi
+# Links
+run "link types" ok -- link types -j
+run "ticket create (link target)" ok -- ticket create -j -s "Regression link target (delete me)"
+LNK=$(jq -r '.data.key // empty' <<<"$LAST")
+run "link add <type>" ok -- link add "$KEY" blocks "$LNK" -j
+LID=$(jq -r '.data.link.id // empty' <<<"$LAST")
+run "link add inward phrase" ok -- link add "$KEY" is blocked by "$LNK" -j
+[[ $(jq -r '.data.link.direction // empty' <<<"$LAST") == inward ]] && { PASS=$((PASS + 1)); echo "PASS link add inward direction"; } || { FAIL=$((FAIL + 1)); echo "FAIL link add inward direction"; }
+run "link add bad type fails" fail -- link add "$KEY" nope "$LNK" -j
+code_is "link add bad type: LINK_TYPE_NOT_FOUND" LINK_TYPE_NOT_FOUND
+run "link add <url> -ti" ok -- link add "$KEY" "https://example.com/regression" -ti "Regression page" -j
+WID=$(jq -r '.data.webLink.id // empty' <<<"$LAST")
+run "link list" ok -- link list "$KEY" -j
+run "link remove without -y fails" fail -- link remove "$KEY" "$LID" -j </dev/null
+code_is "link remove without -y: CONFIRM_REQUIRED" CONFIRM_REQUIRED
+run "link remove -y" ok -- link remove "$KEY" "$LID" -j -y
+run "link remove web -y" ok -- link remove "$KEY" "$WID" -j -y
+run "link remove unknown fails" fail -- link remove "$KEY" "$LID" -j -y
+code_is "link remove unknown: LINK_NOT_FOUND" LINK_NOT_FOUND
+run "ticket delete link target" ok -- ticket delete "$LNK" -j -y
+[[ $(jq -r '.ok' <<<"$LAST") == true ]] && LNK=""
+# Watchers
+run "watcher list" ok -- watcher list "$KEY" -j
+run "watcher remove (me)" ok -- watcher remove "$KEY" -j
+run "watcher remove again is a no-op" ok -- watcher remove "$KEY" me -j
+[[ $(jq -r '.data.changed' <<<"$LAST") == false ]] && { PASS=$((PASS + 1)); echo "PASS watcher remove changed:false"; } || { FAIL=$((FAIL + 1)); echo "FAIL watcher remove changed:false"; }
+run "watcher add (me)" ok -- watcher add "$KEY" -j
+run "watcher add unknown user fails" fail -- watcher add "$KEY" nobody-regression@example.invalid -j
+code_is "watcher add unknown user code" USER_NOT_FOUND
+run "watcher list bad key fails" fail -- watcher list nope -j
 
 # Reports
 run "report flow -da -n" ok -- report flow -j -da 7 -n 50

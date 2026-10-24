@@ -57,6 +57,21 @@ export function duration(raw: string, what: string): string {
     .join(" ");
 }
 
+/** An issue link id ("10001") or a web link id ("w10000"), as `jira link list` shows them. */
+export function linkId(raw: string): { web: boolean; id: string } {
+  const match = /^(w?)(\d+)$/i.exec(raw.trim());
+  if (!match) throw new CliError("USAGE", `"${raw}" is not a link id like 10001 or w10000`);
+  return { web: match[1] !== "", id: match[2] ?? "" };
+}
+
+/** An http or https URL; anything else is not a web link. */
+export function webUrl(raw: string): string | undefined {
+  const url = raw.trim();
+  if (!/^https?:\/\//i.test(url)) return undefined;
+  if (!URL.canParse(url)) throw new CliError("USAGE", `"${raw}" is not a valid URL`);
+  return url;
+}
+
 /** Throws USAGE unless `end` is after `start` (both ISO strings, when given); `what` names the thing. */
 export function assertDateOrder(start: string | undefined, end: string | undefined, what: string): void {
   if (start && end && Date.parse(end) <= Date.parse(start)) {
