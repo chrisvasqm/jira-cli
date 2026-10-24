@@ -55,6 +55,10 @@ The CLI looks for a config in this order:
 | `jira comment add <KEY> [text]`       | Add a comment                                                     |
 | `jira comment edit <KEY> <id> [text]` | Replace a comment's text                                          |
 | `jira comment delete <KEY> <id>`      | Delete a comment                                                  |
+| `jira report flow`                    | Throughput per week, cycle and lead time, oldest open tickets     |
+| `jira report workload`                | Open tickets per person and status                                |
+| `jira report sprint [id]`             | A sprint's done and not-done tickets (default: active sprint)     |
+| `jira report velocity`                | Tickets and points done per closed sprint (`--sprints <n>`, 6)    |
 | `jira setup`                          | Create the config (see [Set up](#set-up))                         |
 
 - **Board filters:**
@@ -76,6 +80,7 @@ The CLI looks for a config in this order:
   - `--sprint active|<id>|<name>|none`: put the ticket in a sprint of the configured board, or back in the backlog with `none`
   - `create` also takes `--type` (default Task), `--parent <KEY>` and `--project <KEY>`.
   - `edit` also takes `--remove-label`.
+- **Reports** use the configured board, or `--board <id>`. `flow` looks back `--days <n>` (30). Cycle time runs from the first "in progress" status to done; lead time from created to done.
 - **Move targets:** a status name, a transition name or id, or a board column. Case does not matter.
 - **Comment text:** pass it inline, or use `--file <path>` (`-` reads stdin).
   - A blank line starts a new paragraph.

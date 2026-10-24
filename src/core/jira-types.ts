@@ -16,7 +16,7 @@ export interface JiraUser {
 
 interface IssueFields {
   summary: string;
-  status: { id: string; name: string };
+  status: { id: string; name: string; statusCategory?: { key: string } };
   issuetype: { name: string };
   priority?: { name: string } | null;
   assignee?: JiraUser | null;
@@ -27,6 +27,11 @@ export interface Issue {
   id: string;
   key: string;
   fields: IssueFields;
+}
+
+/** Jira's status categories are "new", "indeterminate" (in progress) and "done". */
+export function isDone(issue: Issue): boolean {
+  return issue.fields.status.statusCategory?.key === "done";
 }
 
 interface IssueDetailFields extends IssueFields {

@@ -76,3 +76,16 @@ export function table(rows: ReadonlyArray<readonly [string, string]>): string {
   const width = Math.max(...rows.map(([key]) => key.length));
   return rows.map(([key, value]) => `${key.padEnd(width)}  ${value}`).join("\n");
 }
+
+/** Rows of cells aligned in columns; the first row is the header. */
+export function grid(rows: ReadonlyArray<ReadonlyArray<string>>): string {
+  const widths = rows[0]?.map((_, col) => Math.max(...rows.map((row) => (row[col] ?? "").length))) ?? [];
+  return rows
+    .map((row) =>
+      row
+        .map((cell, col) => cell.padEnd(widths[col] ?? 0))
+        .join("  ")
+        .trimEnd(),
+    )
+    .join("\n");
+}
