@@ -10,6 +10,7 @@ KEY="" SUB="" SPR=""
 TMP=$(mktemp -d)
 KEY="" SUB="" SPR="" LNK=""
 KEY="" SUB="" SPR="" RNK=""
+EPC="" ECH=""
 
 # run <name> <expect: ok|fail|soft> -- cmd...   (soft = may fail on some boards/projects)
 run() {
@@ -41,6 +42,8 @@ cleanup() {
   [[ -n $LNK ]] && "${J[@]}" ticket delete "$LNK" -y -w -j >/dev/null 2>&1
   [[ -n $SUB ]] && "${J[@]}" ticket delete "$SUB" -y -j >/dev/null 2>&1
   [[ -n $RNK ]] && "${J[@]}" ticket delete "$RNK" -y -j >/dev/null 2>&1
+  [[ -n $ECH ]] && "${J[@]}" ticket delete "$ECH" -y -w -j >/dev/null 2>&1
+  [[ -n $EPC ]] && "${J[@]}" ticket delete "$EPC" -y -w -j >/dev/null 2>&1
   [[ -n $KEY ]] && "${J[@]}" ticket delete "$KEY" -y -w -j >/dev/null 2>&1
   rm -rf "$TMP"
 }
@@ -197,6 +200,29 @@ run "link remove unknown fails" fail -- link remove "$KEY" "$LID" -j -y
 code_is "link remove unknown: LINK_NOT_FOUND" LINK_NOT_FOUND
 run "ticket delete link target" ok -- ticket delete "$LNK" -j -y
 [[ $(jq -r '.ok' <<<"$LAST") == true ]] && LNK=""
+# Epics
+run "epic list -n" ok -- epic list -j -n 5
+run "epic list -n 101 fails" fail -- epic list -j -n 101
+run "ticket create (epic)" ok -- ticket create -j -s "Regression epic (delete me)" -t Epic
+EPC=$(jq -r '.data.key // empty' <<<"$LAST")
+if [[ -n $EPC ]]; then
+  run "ticket create -pa (epic child)" ok -- ticket create -j -s "Regression epic child (delete me)" -pa "$EPC"
+  ECH=$(jq -r '.data.key // empty' <<<"$LAST")
+  run "epic view -n" ok -- epic view "$EPC" -j -n 10
+  [[ $(jq -r '"\(.data.progress.done)/\(.data.progress.total) \(.data.children[0].key)"' <<<"$LAST") == "0/1 $ECH" ]] && { PASS=$((PASS + 1)); echo "PASS epic view progress"; } || { FAIL=$((FAIL + 1)); echo "FAIL epic view progress $(jq -c .data.progress <<<"$LAST")"; }
+  run "epic list -k -st" ok -- epic list -j -k "${EPC%%-*}" -st "To Do" -n 100
+  [[ $(jq -r --arg k "$EPC" '.data.epics[] | select(.key == $k) | .progress.total' <<<"$LAST") == 1 ]] && { PASS=$((PASS + 1)); echo "PASS epic list progress"; } || { FAIL=$((FAIL + 1)); echo "FAIL epic list progress"; }
+  run "ticket view statusCategory" ok -- ticket view "$EPC" -j -n 0
+  [[ $(jq -r '.data.statusCategory' <<<"$LAST") == new ]] && { PASS=$((PASS + 1)); echo "PASS ticket view statusCategory"; } || { FAIL=$((FAIL + 1)); echo "FAIL ticket view statusCategory"; }
+  run "epic view non-epic fails" fail -- epic view "$ECH" -j
+  code_is "epic view non-epic: NOT_AN_EPIC" NOT_AN_EPIC
+  run "ticket delete (epic child)" ok -- ticket delete "$ECH" -j -y
+  [[ $(jq -r '.ok' <<<"$LAST") == true ]] && ECH=""
+  run "ticket delete (epic)" ok -- ticket delete "$EPC" -j -y -w
+  [[ $(jq -r '.ok' <<<"$LAST") == true ]] && EPC=""
+fi
+run "epic view unknown fails" fail -- epic view "${KEY%%-*}-999999" -j
+code_is "epic view unknown: EPIC_NOT_FOUND" EPIC_NOT_FOUND
 # Watchers
 run "watcher list" ok -- watcher list "$KEY" -j
 run "watcher remove (me)" ok -- watcher remove "$KEY" -j
