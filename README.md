@@ -87,7 +87,7 @@ The agent adds `--json` to each command, so it reads exact data and stable error
 | `jira comment edit <KEY> <id> [text]` | Replace a comment's text                                                  |
 | `jira comment delete <KEY> <id>`      | Delete a comment                                                          |
 | `jira sprint list`                    | A board's sprints (`-S, --state open\|active\|future\|closed\|all`, open) |
-| `jira sprint view [id]`               | A sprint (default: active sprint)                                         |
+| `jira sprint view [id]`               | A sprint (default: the active sprint; `SPRINT_AMBIGUOUS` if several)      |
 | `jira sprint create`                  | New future sprint (`-N, --name` is required, at most 30 characters)       |
 | `jira sprint edit <id>`               | Change only the fields you pass                                           |
 | `jira sprint start <id>`              | Start a future sprint (default: now, for two weeks)                       |
@@ -95,7 +95,7 @@ The agent adds `--json` to each command, so it reads exact data and stable error
 | `jira sprint delete <id>`             | Delete a sprint; its tickets go back to the backlog                       |
 | `jira report flow`                    | Throughput per week, cycle and lead time, oldest open tickets             |
 | `jira report workload`                | Open tickets per person and status                                        |
-| `jira report sprint [id]`             | A sprint's done and not-done tickets (default: active sprint)             |
+| `jira report sprint [id]`             | A sprint's done and not-done tickets (default: active, else last closed)  |
 | `jira report velocity`                | Tickets and points done per closed sprint (`-s, --sprints <n>`, 6)        |
 | `jira setup`                          | Create the config (see [Set up](#set-up))                                 |
 
