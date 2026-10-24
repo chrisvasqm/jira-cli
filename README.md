@@ -116,11 +116,11 @@ The agent adds `--json` to each command, so it reads exact data and stable error
 | `jira report workload`                | Open tickets per person and status                                            |
 | `jira report sprint [id]`             | A sprint's done and not-done tickets (default: active, else last closed)      |
 | `jira report velocity`                | Tickets and points done per closed sprint (`-n, --sprints <n>`, 6)            |
-| `jira project list`                   | Projects you can see; `*` marks yours (`-n, --limit <n>`, 50)              |
-| `jira component list`                 | A project's components (`-k, --project <KEY>`)                             |
-| `jira version list`                   | A project's versions, unreleased first (`-k, --project <KEY>`)             |
-| `jira label list`                     | Labels used on the site (`-n, --limit <n>`, 1000)                          |
-| `jira field list [text]`              | Fields and their ids; `text` filters names (any case)                      |
+| `jira project list`                   | Projects you can see; `*` marks yours (`-n, --limit <n>`, 50)                 |
+| `jira component list`                 | A project's components (`-k, --project <KEY>`)                                |
+| `jira version list`                   | A project's versions, unreleased first (`-k, --project <KEY>`)                |
+| `jira label list`                     | Labels used on the site (`-n, --limit <n>`, 1000)                             |
+| `jira field list [text]`              | Fields and their ids; `text` filters names (any case)                         |
 | `jira user search <text>`             | People whose name or email starts with the text (`-n, --limit <n>`, 20)       |
 | `jira user view [who]`                | A user: `me` (default), an email, a name or an accountId                      |
 | `jira setup`                          | Create the config (see [Set up](#set-up))                                     |
