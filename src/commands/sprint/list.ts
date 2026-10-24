@@ -24,7 +24,7 @@ export function registerList(sprint: Command): void {
     .command("list")
     .description("List a board's sprints (default: active and future)")
     .option("-b, --board <id>", "Board id (default: the configured board)")
-    .option("-S, --state <state>", "open, active, future, closed or all", "open")
+    .option("-se, --state <state>", "open, active, future, closed or all", "open")
     .action(async (opts: ListOptions, cmd: Command) => {
       const state = STATES.get(opts.state.trim().toLowerCase());
       if (!state) throw new CliError("USAGE", "--state takes open, active, future, closed or all");

@@ -17,7 +17,7 @@ export function registerStart(sprint: Command): void {
   sprint
     .command("start <id>")
     .description("Start a future sprint (default: now, for its planned length or two weeks)")
-    .option("-s, --start <date>", "Start, e.g. 2026-10-24 (default: now)")
+    .option("-sd, --start <date>", "Start, e.g. 2026-10-24 (default: now)")
     .option("-e, --end <date>", "End, e.g. 2026-11-07 (default: start plus the planned length, or two weeks)")
     .action(async (rawId: string, opts: StartOptions, cmd: Command) => {
       const id = sprintId(rawId);

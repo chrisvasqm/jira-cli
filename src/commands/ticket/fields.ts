@@ -40,10 +40,10 @@ export function fieldOptions(cmd: Command, use: "create" | "edit"): Command {
     .option("-a, --assignee <who>", "me, none, an email, a name or an accountId")
     .option("-l, --add-label <label>", "Add a label (repeat for more)", collect)
     .option(
-      "-S, --sprint <sprint>",
+      "-sp, --sprint <sprint>",
       "active, a sprint id or name, or none for the backlog (configured board)",
     );
-  if (use === "edit") cmd.option("-L, --remove-label <label>", "Remove a label (repeat for more)", collect);
+  if (use === "edit") cmd.option("-rl, --remove-label <label>", "Remove a label (repeat for more)", collect);
   return cmd;
 }
 

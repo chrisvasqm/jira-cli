@@ -1,5 +1,5 @@
 import { createRequire } from "node:module";
-import { Command, CommanderError } from "commander";
+import { CommanderError } from "commander";
 import { registerBoard } from "./commands/board/index.js";
 import { registerComment } from "./commands/comment/index.js";
 import { registerReport } from "./commands/report/index.js";
@@ -8,12 +8,13 @@ import { registerSprint } from "./commands/sprint/index.js";
 import { registerTicket } from "./commands/ticket/index.js";
 import { CliError } from "./core/errors.js";
 import { outputMode } from "./core/bootstrap.js";
+import { expandShortFlags, FlagCommand } from "./core/flags.js";
 import { printError } from "./core/output.js";
 import { closePrompts } from "./core/prompt.js";
 
 const { version } = createRequire(import.meta.url)("../package.json") as { version: string };
 
-const program = new Command()
+const program = new FlagCommand()
   .name("jira")
   .description("Jira from the terminal, for humans and agents")
   .version(version, "-v, --version", "Print the version")
@@ -53,7 +54,7 @@ function toCliError(err: unknown): unknown {
 }
 
 program
-  .parseAsync(process.argv)
+  .parseAsync(expandShortFlags(process.argv))
   .then(() => closePrompts())
   .catch((raw: unknown) => {
     closePrompts();
