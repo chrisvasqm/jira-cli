@@ -100,6 +100,11 @@ if [[ -n $SPR ]]; then
   if [[ $(jq -r '.data.state // empty' <<<"$LAST") == active ]]; then
     run "sprint start (active) fails" fail -- sprint start "$SPR" -j
     run "sprint view <id>" ok -- sprint view "$SPR" -j
+    # Two active sprints only when the board already had one: the default must not pick one silently.
+    if [[ $("${J[@]}" sprint list -j -S active | jq '.data.sprints | length') -gt 1 ]]; then
+      run "sprint view, 2 active: SPRINT_AMBIGUOUS" fail -- sprint view -j
+      run "report sprint, 2 active: SPRINT_AMBIGUOUS" fail -- report sprint -j
+    fi
     run "sprint close without -y fails" fail -- sprint close "$SPR" -j </dev/null
     run "sprint close -y" ok -- sprint close "$SPR" -j -y
   fi
