@@ -30,7 +30,7 @@ Run `jira setup` in the project directory. It asks for:
 - a board;
 - a project key.
 
-It saves them to `.jira-cli.json` with file mode 600. If that file already exists, it asks before replacing it (`--yes` skips the question). Add `--global` to save to `~/.config/jira-cli/config.json` instead, or pass `--config <path>` to choose the file.
+It saves them to `.jira-cli.json` with file mode 600. If that file already exists, it asks before replacing it (`--yes`, `-y` skips the question). Add `--global` (`-g`) to save to `~/.config/jira-cli/config.json` instead, or pass `--config <path>` (`-c`) to choose the file.
 
 - Keep the file out of git, because it holds your token. `setup` warns you when git does not ignore it.
 - Each directory can have its own config, so different projects can use different Jira sites or boards.
@@ -43,48 +43,48 @@ The CLI looks for a config in this order:
 
 ## Commands
 
-| Command                               | What it does                                                      |
-| ------------------------------------- | ----------------------------------------------------------------- |
-| `jira board [view [id]]`              | Tickets on a board (default: yours), grouped by column            |
-| `jira board list`                     | Boards you can see; `*` marks yours                               |
-| `jira board use <id>`                 | Make a board and its project the default                          |
-| `jira ticket view <KEY>`              | Fields, description and latest comments (`--comments <0-100>`, 5) |
-| `jira ticket create`                  | New ticket (`--summary` is required)                              |
-| `jira ticket edit <KEY>`              | Change only the fields you pass                                   |
-| `jira ticket move <KEY> [target]`     | Change the status; with no target, list the allowed moves         |
-| `jira ticket delete <KEY>`            | Delete a ticket (`--with-subtasks` also deletes its sub-tasks)    |
-| `jira comment list <KEY>`             | All comments, oldest first (`--limit <n>`, 50)                    |
-| `jira comment add <KEY> [text]`       | Add a comment                                                     |
-| `jira comment edit <KEY> <id> [text]` | Replace a comment's text                                          |
-| `jira comment delete <KEY> <id>`      | Delete a comment                                                  |
-| `jira report flow`                    | Throughput per week, cycle and lead time, oldest open tickets     |
-| `jira report workload`                | Open tickets per person and status                                |
-| `jira report sprint [id]`             | A sprint's done and not-done tickets (default: active sprint)     |
-| `jira report velocity`                | Tickets and points done per closed sprint (`--sprints <n>`, 6)    |
-| `jira setup`                          | Create the config (see [Set up](#set-up))                         |
+| Command                               | What it does                                                          |
+| ------------------------------------- | --------------------------------------------------------------------- |
+| `jira board [view [id]]`              | Tickets on a board (default: yours), grouped by column                |
+| `jira board list`                     | Boards you can see; `*` marks yours                                   |
+| `jira board use <id>`                 | Make a board and its project the default                              |
+| `jira ticket view <KEY>`              | Fields, description and latest comments (`-n, --comments <0-100>`, 5) |
+| `jira ticket create`                  | New ticket (`-s, --summary` is required)                              |
+| `jira ticket edit <KEY>`              | Change only the fields you pass                                       |
+| `jira ticket move <KEY> [target]`     | Change the status; with no target, list the allowed moves             |
+| `jira ticket delete <KEY>`            | Delete a ticket (`-w, --with-subtasks` also deletes sub-tasks)        |
+| `jira comment list <KEY>`             | All comments, oldest first (`-n, --limit <n>`, 50)                    |
+| `jira comment add <KEY> [text]`       | Add a comment                                                         |
+| `jira comment edit <KEY> <id> [text]` | Replace a comment's text                                              |
+| `jira comment delete <KEY> <id>`      | Delete a comment                                                      |
+| `jira report flow`                    | Throughput per week, cycle and lead time, oldest open tickets         |
+| `jira report workload`                | Open tickets per person and status                                    |
+| `jira report sprint [id]`             | A sprint's done and not-done tickets (default: active sprint)         |
+| `jira report velocity`                | Tickets and points done per closed sprint (`-s, --sprints <n>`, 6)    |
+| `jira setup`                          | Create the config (see [Set up](#set-up))                             |
 
 - **Board filters:**
-  - `--status <column or status>`
-  - `--assignee me|none|<email, name or accountId>`
-  - `--sprint active|all|<id>`
-  - `--jql <extra JQL>`
-  - `--order-by <JQL>`
-  - `--limit <n>` (default 100)
+  - `-s, --status <column or status>`
+  - `-a, --assignee me|none|<email, name or accountId>`
+  - `-S, --sprint active|all|<id>`
+  - `-q, --jql <extra JQL>`
+  - `-o, --order-by <JQL>`
+  - `-n, --limit <n>` (default 100)
 
   Sprint boards show the active sprints by default.
 
 - **Ticket fields (`create` and `edit`):**
-  - `--summary`
-  - `--description <text>`, or `--description-file <path>` (`-` reads stdin). On `edit`, `--description ""` clears the description.
-  - `--priority <name>`
-  - `--assignee me|none|<email, name or accountId>`
-  - `--add-label` (repeatable)
-  - `--sprint active|<id>|<name>|none`: put the ticket in a sprint of the configured board, or back in the backlog with `none`
-  - `create` also takes `--type` (default Task), `--parent <KEY>` and `--project <KEY>`.
-  - `edit` also takes `--remove-label`.
-- **Reports** use the configured board, or `--board <id>`. `flow` looks back `--days <n>` (30). Cycle time runs from the first "in progress" status to done; lead time from created to done.
+  - `-s, --summary`
+  - `-d, --description <text>`, or `-f, --description-file <path>` (`-` reads stdin). On `edit`, `--description ""` clears the description.
+  - `-p, --priority <name>`
+  - `-a, --assignee me|none|<email, name or accountId>`
+  - `-l, --add-label` (repeatable)
+  - `-S, --sprint active|<id>|<name>|none`: put the ticket in a sprint of the configured board, or back in the backlog with `none`
+  - `create` also takes `-t, --type` (default Task), `-P, --parent <KEY>` and `-k, --project <KEY>`.
+  - `edit` also takes `-L, --remove-label`.
+- **Reports** use the configured board, or `-b, --board <id>`. `flow` looks back `-d, --days <n>` (30); `flow` and `workload` take `-n, --limit <n>`. Cycle time runs from the first "in progress" status to done; lead time from created to done.
 - **Move targets:** a status name, a transition name or id, or a board column. Case does not matter.
-- **Comment text:** pass it inline, or use `--file <path>` (`-` reads stdin).
+- **Comment text:** pass it inline, or use `-f, --file <path>` (`-` reads stdin).
   - A blank line starts a new paragraph.
   - A single newline is a line break.
   - Lines between ` ``` ` fences become a code block.
@@ -94,7 +94,7 @@ Run `jira <command> --help` for every option.
 
 ## Output
 
-Every command prints readable text by default. Add `--json` to get one line on stdout:
+Every command prints readable text by default. Add `--json` (`-j`) to get one line on stdout:
 
 - on success: `{ "ok": true, "data": … }`
 - on failure: `{ "ok": false, "error": { "code", "message", "details" } }`

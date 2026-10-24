@@ -46,17 +46,17 @@ export function registerView(board: Command): void {
     .command("view [id]", { isDefault: true })
     .description("Show a board's tickets grouped by column (default: the configured board)")
     .option(
-      "--sprint <active|id|all>",
+      "-S, --sprint <active|id|all>",
       "Sprint boards default to active sprints; 'all' lists every board issue",
     )
-    .option("--status <name>", "Only issues in this column (or status) name")
+    .option("-s, --status <name>", "Only issues in this column (or status) name")
     .option(
-      "--assignee <me|user>",
+      "-a, --assignee <me|user>",
       "Only issues assigned to me, none (unassigned), or <user> (email, name or accountId)",
     )
-    .option("--jql <query>", "Extra JQL appended with AND")
-    .option("--order-by <fields>", "JQL sort, e.g. 'updated DESC'")
-    .option("--limit <n>", "Maximum issues to fetch", "100")
+    .option("-q, --jql <query>", "Extra JQL appended with AND")
+    .option("-o, --order-by <fields>", "JQL sort, e.g. 'updated DESC'")
+    .option("-n, --limit <n>", "Maximum issues to fetch", "100")
     .action(async (rawId: string | undefined, opts: BoardOptions, cmd: Command) => {
       const limit = validate(opts);
       const requested = rawId === undefined ? undefined : boardId(rawId);

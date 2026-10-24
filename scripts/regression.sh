@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+# Live regression of every command using only short flags.
+# Creates throwaway tickets in the configured project and deletes them at the end.
+# Usage: pnpm build && scripts/regression.sh .
+set -u
+REPO=${1:?repo path}
+J=(node "$REPO/dist/index.js")
+PASS=0 FAIL=0 SOFT=0
+KEY="" SUB=""
+
+# run <name> <expect: ok|fail|soft> -- cmd...   (soft = may fail on some boards/projects)
+run() {
+  local name=$1 expect=$2; shift 3
+  local out code
+  out=$("${J[@]}" "$@" 2>/dev/null); code=$?
+  local okv; okv=$(jq -r '.ok | tostring' <<<"$out" 2>/dev/null)
+  if [[ $expect == ok && $code == 0 && $okv == true ]] || [[ $expect == soft && $code == 0 && $okv == true ]] || [[ $expect == fail && $code != 0 && $okv == false ]]; then
+    PASS=$((PASS + 1)); echo "PASS $name"
+  elif [[ $expect == soft ]]; then
+    SOFT=$((SOFT + 1)); echo "SOFT $name (exit $code) $(jq -c '.error // empty' <<<"$out" 2>/dev/null)"
+  else
+    FAIL=$((FAIL + 1)); echo "FAIL $name (exit $code) $(head -c 300 <<<"$out")"
+  fi
+  LAST=$out
+}
+
+cleanup() {
+  [[ -n $SUB ]] && "${J[@]}" ticket delete "$SUB" -y -j >/dev/null 2>&1
+  [[ -n $KEY ]] && "${J[@]}" ticket delete "$KEY" -y -w -j >/dev/null 2>&1
+}
+trap cleanup EXIT
+
+# Global flags
+"${J[@]}" -v >/dev/null && { PASS=$((PASS + 1)); echo "PASS -v"; } || { FAIL=$((FAIL + 1)); echo "FAIL -v"; }
+run "-c missing file fails" fail -- board list -j -c /nonexistent/jira.json
+run "-j before subcommand" ok -- -j board list
+run "--json long form still works" ok -- board list --json
+"${J[@]}" setup -h | grep -q -- "-g, --global" && { PASS=$((PASS + 1)); echo "PASS setup -g in help"; } || { FAIL=$((FAIL + 1)); echo "FAIL setup -g in help"; }
+
+# Board
+run "board view -n" ok -- board view -j -n 5
+run "board view -a -o -q" ok -- board view -j -a me -o "updated DESC" -q "created >= -3650d" -n 5
+run "board view -S all" ok -- board view -j -S all -n 5
+run "board view -s" ok -- board view -j -s "Done" -n 5
+run "board view -S active" soft -- board view -j -S active -n 5
+
+# Ticket create / view / edit
+run "ticket create -s -d -t -a -l" ok -- ticket create -j -s "Regression short flags (delete me)" -d "Created by regression" -t Task -a me -l regression-short
+KEY=$(jq -r '.data.key // empty' <<<"$LAST")
+[[ -z $KEY ]] && { echo "No ticket created; stopping"; exit 1; }
+echo "  created $KEY"
+run "ticket create -P (sub-task)" soft -- ticket create -j -s "Regression sub-task (delete me)" -t Subtask -P "$KEY"
+SUB=$(jq -r '.data.key // empty' <<<"$LAST")
+run "ticket create -k bad project fails" fail -- ticket create -j -s "x" -k ZZZNOPE9
+run "ticket view -n 0" ok -- ticket view "$KEY" -j -n 0
+run "ticket view -n 999 fails" fail -- ticket view "$KEY" -j -n 999
+run "ticket edit -s -l -L" ok -- ticket edit "$KEY" -j -s "Regression short flags edited (delete me)" -l short-two -L regression-short
+run "ticket edit -f stdin" ok -- ticket edit "$KEY" -j -f - <<<"Description from stdin"
+run "ticket edit -p" soft -- ticket edit "$KEY" -j -p Medium
+run "ticket edit -S active" soft -- ticket edit "$KEY" -j -S active
+run "ticket edit -S none" soft -- ticket edit "$KEY" -j -S none
+run "ticket move (list)" ok -- ticket move "$KEY" -j
+
+# Comments
+run "comment add -f stdin" ok -- comment add "$KEY" -j -f - <<<"Comment from stdin"
+CID=$(jq -r '.data.comment.id // empty' <<<"$LAST")
+run "comment list -n" ok -- comment list "$KEY" -j -n 10
+run "comment edit -f stdin" ok -- comment edit "$KEY" "$CID" -j -f - <<<"Edited comment"
+run "comment delete without -y fails" fail -- comment delete "$KEY" "$CID" -j </dev/null
+run "comment delete -y" ok -- comment delete "$KEY" "$CID" -j -y
+
+# Reports
+run "report flow -d -n" ok -- report flow -j -d 7 -n 50
+run "report workload -n" ok -- report workload -j -n 50
+run "report sprint" soft -- report sprint -j
+run "report velocity -s" soft -- report velocity -j -s 2
+run "report flow -b bad fails" fail -- report flow -j -b 0
+
+# Delete
+run "ticket delete without -y fails" fail -- ticket delete "$KEY" -j </dev/null
+if [[ -n $SUB ]]; then
+  run "ticket delete -y -w" ok -- ticket delete "$KEY" -j -y -w
+else
+  run "ticket delete -y" ok -- ticket delete "$KEY" -j -y
+fi
+SUB="" KEY=""
+
+echo "pass $PASS  fail $FAIL  soft $SOFT"
+[[ $FAIL == 0 ]]

@@ -15,7 +15,7 @@ export function registerEdit(comment: Command): void {
   comment
     .command("edit <key> <id> [text]")
     .description("Replace a comment's text")
-    .option("--file <path>", "Read the new text from a file (- reads stdin)")
+    .option("-f, --file <path>", "Read the new text from a file (- reads stdin)")
     .action(
       async (rawKey: string, rawId: string, inline: string | undefined, opts: EditOptions, cmd: Command) => {
         const key = issueKey(rawKey);

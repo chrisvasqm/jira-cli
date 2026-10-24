@@ -30,14 +30,20 @@ function collect(value: string, previous: string[] = []): string[] {
 /** `--remove-label` only exists on edit: a new ticket has no labels to remove. */
 export function fieldOptions(cmd: Command, use: "create" | "edit"): Command {
   cmd
-    .option("--summary <text>", "Title")
-    .option("--description <text>", "Description. Blank lines split paragraphs; ``` fences make code blocks")
-    .option("--description-file <path>", "Read the description from a file (- reads stdin)")
-    .option("--priority <name>", "Priority name, e.g. High")
-    .option("--assignee <who>", "me, none, an email, a name or an accountId")
-    .option("--add-label <label>", "Add a label (repeat for more)", collect)
-    .option("--sprint <sprint>", "active, a sprint id or name, or none for the backlog (configured board)");
-  if (use === "edit") cmd.option("--remove-label <label>", "Remove a label (repeat for more)", collect);
+    .option("-s, --summary <text>", "Title")
+    .option(
+      "-d, --description <text>",
+      "Description. Blank lines split paragraphs; ``` fences make code blocks",
+    )
+    .option("-f, --description-file <path>", "Read the description from a file (- reads stdin)")
+    .option("-p, --priority <name>", "Priority name, e.g. High")
+    .option("-a, --assignee <who>", "me, none, an email, a name or an accountId")
+    .option("-l, --add-label <label>", "Add a label (repeat for more)", collect)
+    .option(
+      "-S, --sprint <sprint>",
+      "active, a sprint id or name, or none for the backlog (configured board)",
+    );
+  if (use === "edit") cmd.option("-L, --remove-label <label>", "Remove a label (repeat for more)", collect);
   return cmd;
 }
 

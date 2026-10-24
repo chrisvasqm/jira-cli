@@ -26,8 +26,8 @@ export function registerWorkload(report: Command): void {
   report
     .command("workload")
     .description("Open tickets per person and status")
-    .option("--board <id>", "Board id (default: the configured board)")
-    .option("--limit <n>", "Maximum open tickets to read", "1000")
+    .option("-b, --board <id>", "Board id (default: the configured board)")
+    .option("-n, --limit <n>", "Maximum open tickets to read", "1000")
     .action(async (opts: WorkloadOptions, cmd: Command) => {
       const limit = intInRange(opts.limit, "--limit", 1);
       const ctx = await reportContext(opts, cmd);
