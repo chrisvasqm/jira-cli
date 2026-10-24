@@ -1,6 +1,6 @@
 import { createRequire } from "node:module";
 import { Command, CommanderError } from "commander";
-import { registerBoard } from "./commands/board.js";
+import { registerBoard } from "./commands/board/index.js";
 import { registerComment } from "./commands/comment/index.js";
 import { registerSetup } from "./commands/setup.js";
 import { registerTicket } from "./commands/ticket/index.js";

@@ -10,6 +10,8 @@ export interface GlobalOptions {
 
 export interface Context {
   config: Config;
+  /** File the config was loaded from. */
+  configPath: string;
   mode: OutputMode;
 }
 
@@ -24,7 +26,7 @@ export function outputMode(cmd: Command): OutputMode {
 /** Load config for the current directory and configure the HTTP client. */
 export function bootstrap(cmd: Command): Context {
   const opts = globalOptions(cmd);
-  const { config } = loadConfig(opts.config);
+  const { config, path } = loadConfig(opts.config);
   HttpClient.configure(config);
-  return { config, mode: opts.json ? "json" : "human" };
+  return { config, configPath: path, mode: opts.json ? "json" : "human" };
 }
