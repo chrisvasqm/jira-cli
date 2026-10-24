@@ -90,7 +90,7 @@ The CLI looks for a config in this order:
   - Lines between ` ``` ` fences become a code block.
 - **Deletes** ask you to type "yes". `--yes` (`-y`) skips the question. With no terminal (scripts, agents), a delete without `--yes` fails with `CONFIRM_REQUIRED`.
 
-Run `jira <command> --help` for every option.
+Every option has a short form, shown above. Run `jira <command> --help` for every option.
 
 ## Output
 
@@ -117,7 +117,7 @@ pnpm check          # type-check, bundle, lint, format check
 pnpm add -g .       # once: use your local build as the global `jira` (then `pnpm build` after changes)
 ```
 
-[AGENTS.md](AGENTS.md) covers the layout and the repo rules.
+[AGENTS.md](AGENTS.md) covers the layout and the repo rules. `pnpm build && scripts/regression.sh .` runs every command with short flags against your configured Jira; it creates throwaway tickets and deletes them.
 
 ## Releasing
 
