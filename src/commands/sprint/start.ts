@@ -23,6 +23,7 @@ export function registerStart(sprint: Command): void {
       const id = sprintId(rawId);
       const start = opts.start === undefined ? undefined : dateArg(opts.start, "--start");
       const end = opts.end === undefined ? undefined : dateArg(opts.end, "--end");
+      assertDateOrder(start, end, "sprint");
       const { mode } = bootstrap(cmd);
       const planned = await sprintIn(id, "future", "start");
       const startDate = start ?? new Date().toISOString();

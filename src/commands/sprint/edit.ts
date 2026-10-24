@@ -34,7 +34,8 @@ export function registerEdit(sprint: Command): void {
       const { mode } = bootstrap(cmd);
       const sprints = new SprintService();
       // One new bound is checked against the sprint's other one.
-      const current = update.startDate && update.endDate ? undefined : await sprints.get(id);
+      const oneBound = (update.startDate === undefined) !== (update.endDate === undefined);
+      const current = oneBound ? await sprints.get(id) : undefined;
       assertDateOrder(update.startDate ?? current?.startDate, update.endDate ?? current?.endDate, "sprint");
       const view = sprintSummary(await sprints.update(id, update));
       printResult(mode, view, () => `Updated sprint ${id}.\n${renderSprint(view)}`);
