@@ -4,6 +4,7 @@ import { registerDelete } from "./delete.js";
 import { registerEdit } from "./edit.js";
 import { registerHistory } from "./history.js";
 import { registerMove } from "./move.js";
+import { registerRank } from "./rank.js";
 import { registerView } from "./view.js";
 
 export function registerTicket(program: Command): void {
@@ -13,5 +14,6 @@ export function registerTicket(program: Command): void {
   registerEdit(ticket);
   registerMove(ticket);
   registerHistory(ticket);
+  registerRank(ticket);
   registerDelete(ticket);
 }
