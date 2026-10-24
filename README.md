@@ -81,6 +81,7 @@ The agent adds `--json` to each command, so it reads exact data and stable error
 | `jira ticket create`                  | New ticket (`-s, --summary` is required)                                   |
 | `jira ticket edit <KEY>`              | Change only the fields you pass                                            |
 | `jira ticket move <KEY> [target]`     | Change the status; with no target, list the allowed moves                  |
+| `jira ticket rank <KEY...>`           | Backlog order: put tickets before (`-bf`) or after (`-af`) another ticket  |
 | `jira ticket delete <KEY>`            | Delete a ticket (`-w, --with-subtasks` also deletes sub-tasks)             |
 | `jira comment list <KEY>`             | All comments, oldest first (`-n, --limit <n>`, 50)                         |
 | `jira comment add <KEY> [text]`       | Add a comment                                                              |
@@ -91,6 +92,9 @@ The agent adds `--json` to each command, so it reads exact data and stable error
 | `jira link add <KEY> <url>`           | Add a web link (`-ti, --title <text>`, default: the URL)                   |
 | `jira link remove <KEY> <id>`         | Remove an issue link (`10001`) or a web link (`w10000`)                    |
 | `jira link types`                     | Issue link types: name, outward and inward phrase                          |
+| `jira watcher list <KEY>`             | Who watches a ticket, the count, and whether you do                        |
+| `jira watcher add <KEY> [user]`       | Watch a ticket, or add a watcher (default: me)                             |
+| `jira watcher remove <KEY> [user]`    | Stop watching, or remove a watcher (default: me)                           |
 | `jira sprint list`                    | A board's sprints (`-se, --state open\|active\|future\|closed\|all`, open) |
 | `jira sprint view [id]`               | A sprint (default: the active sprint; `SPRINT_AMBIGUOUS` if several)       |
 | `jira sprint create`                  | New future sprint (`-na, --name` is required, at most 30 characters)       |
@@ -126,11 +130,13 @@ The agent adds `--json` to each command, so it reads exact data and stable error
 - **Sprint fields (`create`, `edit`, `start`):** `-na, --name`, `-go, --goal` (`""` clears it on `edit`), `-sd, --start <date>`, `-e, --end <date>` (`2026-10-24` or an ISO timestamp). `list`, `view` and `create` take `-b, --board <id>`; `close` and `delete` ask first (`-y, --yes`). The board must use sprints (`NO_SPRINTS` otherwise).
 - **Reports** use the configured board, or `-b, --board <id>`. `flow` looks back `-da, --days <n>` (30); `flow` and `workload` take `-n, --limit <n>`. Cycle time runs from the first "in progress" status to done; lead time from created to done.
 - **Move targets:** a status name, a transition name or id, or a board column. Case does not matter.
+- **Rank:** `jira ticket rank KAN-5 KAN-6 -bf KAN-2` puts KAN-5, then KAN-6, right before KAN-2; `-af, --after <KEY>` puts them right after. Pass exactly one of `-bf, --before` and `-af, --after`, at most 50 tickets. If Jira ranks only some of them, the command fails with `RANK_FAILED` and lists each failed ticket.
 - **Comment text:** pass it inline, or use `-f, --file <path>` (`-` reads stdin).
   - A blank line starts a new paragraph.
   - A single newline is a line break.
   - Lines between ` ``` ` fences become a code block.
 - **Links:** `<type>` is a link type's name, outward or inward phrase from `jira link types`, case-insensitive; quotes are optional (`is blocked by`). An inward phrase links the other way: `jira link add KAN-1 is blocked by KAN-2` means KAN-2 blocks KAN-1. Web link ids start with `w`, so `link remove` knows which kind to remove. `remove` asks first (`-y, --yes`).
+- **Watchers:** `[user]` is `me`, an email, a name or an accountId. `add` and `remove` are idempotent: adding a watcher who already watches, or removing one who does not, succeeds with `changed: false` and a `note`. `remove` does not ask first. `WATCHING_DISABLED` means the site turned watching off.
 - **Deletes** ask you to type "yes". `--yes` (`-y`) skips the question. With no terminal (scripts, agents), a delete without `--yes` fails with `CONFIRM_REQUIRED`.
 
 Every option has a short form, shown above. Short flags are lowercase, and some have two letters (`-st`, `-sp`), so write them apart: `-y -j`, not `-yj`. Run `jira <command> --help` for every option.
