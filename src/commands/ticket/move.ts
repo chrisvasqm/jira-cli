@@ -53,11 +53,8 @@ async function pick(transitions: Transition[], target: string, config: Config): 
   if (first && statuses.size === 1) return first;
   const available = transitions.map(toView);
   if (!first) {
-    throw new CliError(
-      "NO_TRANSITION",
-      `Cannot move to "${target}" from the ticket's current status`,
-      available,
-    );
+    const names = available.map((item) => item.to).join(", ") || "none";
+    throw new CliError("NO_TRANSITION", `Cannot move to "${target}" from here. Allowed: ${names}`, available);
   }
   throw new CliError(
     "TRANSITION_AMBIGUOUS",
@@ -75,6 +72,9 @@ async function byColumn(transitions: Transition[], target: string, config: Confi
 
 function renderOptions(key: string, options: TransitionView[]): string {
   if (options.length === 0) return `${key} has no transitions available.`;
-  const rows = options.map((item) => [item.to, `${item.name} (id ${item.id})`] as const);
+  const rows = options.map((item) => {
+    const via = item.name === item.to ? `id ${item.id}` : `via "${item.name}", id ${item.id}`;
+    return [item.to, via] as const;
+  });
   return [`${key} can move to:`, table(rows), `Run: jira ticket move ${key} "<status>"`].join("\n\n");
 }
