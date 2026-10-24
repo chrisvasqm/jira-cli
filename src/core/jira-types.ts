@@ -17,7 +17,8 @@ export interface JiraUser {
 interface IssueFields {
   summary: string;
   status: { id: string; name: string; statusCategory?: { key: string } };
-  issuetype: { name: string };
+  /** hierarchyLevel is 1 for epics, 0 for standard types, -1 for sub-tasks. */
+  issuetype: { name: string; hierarchyLevel?: number };
   priority?: { name: string } | null;
   assignee?: JiraUser | null;
   updated: string;
@@ -62,6 +63,8 @@ export interface IssueSummary {
   type: string;
   summary: string;
   status: string;
+  /** Jira's status category key: "new", "indeterminate" or "done". */
+  statusCategory: string | null;
   priority: string | null;
   assignee: string | null;
   updated: string;
@@ -82,6 +85,7 @@ export function summarize(issue: Issue): IssueSummary {
     type: fields.issuetype.name,
     summary: fields.summary,
     status: fields.status.name,
+    statusCategory: fields.status.statusCategory?.key ?? null,
     priority: fields.priority?.name ?? null,
     assignee: fields.assignee?.displayName ?? null,
     updated: fields.updated,
