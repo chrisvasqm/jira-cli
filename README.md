@@ -10,7 +10,7 @@ You need Node.js 24 or newer. To install the latest release, or update to it, ru
 curl -fsSL https://raw.githubusercontent.com/chrisvasqm/jira-cli/main/install.sh | sh
 ```
 
-The [script](install.sh) checks your Node.js version, then runs `npm install -g` on the latest release. Each [release](https://github.com/chrisvasqm/jira-cli/releases) also lists the command for that exact version.
+The [script](install.sh) checks your Node.js version, downloads the latest release, verifies its SHA-256 checksum, then installs it with `npm install -g`. Each [release](https://github.com/chrisvasqm/jira-cli/releases) also lists the command for that exact version.
 
 To teach your AI agent (Claude Code, Codex, Cursor and others) to use the CLI, run:
 
@@ -28,7 +28,7 @@ Run `jira setup` in the project directory. It asks for:
 - a board;
 - a project key.
 
-It saves them to `.jira-cli.json` with file mode 600. Add `--global` to save to `~/.config/jira-cli/config.json` instead, or pass `--config <path>` to choose the file.
+It saves them to `.jira-cli.json` with file mode 600. If that file already exists, it asks before replacing it (`--yes` skips the question). Add `--global` to save to `~/.config/jira-cli/config.json` instead, or pass `--config <path>` to choose the file.
 
 - Keep the file out of git, because it holds your token. `setup` warns you when git does not ignore it.
 - Each directory can have its own config, so different projects can use different Jira sites or boards.
@@ -122,5 +122,5 @@ Every feature or fix PR ships a release.
 2. **Write a clear squash commit subject** (the PR title), such as "Add ticket delete". The release notes list the subjects of every commit since the previous release.
 3. **After the merge, run `pnpm release` on an up-to-date `main`**, before the next code PR merges. Docs-only merges in between are fine.
    - It needs `gh auth login` with push access.
-   - It runs `pnpm check`, packs the CLI, tags the commit, and creates the GitHub release with notes built from the commit subjects, `jira-cli-X.Y.Z.tgz` and `jira-cli.tgz` (the latest-version link).
-   - If it fails after tagging, fix the cause and run it again.
+   - It runs `pnpm check`, packs the CLI, tags the commit, and creates the GitHub release with notes built from the commit subjects, the checksum file `jira-cli.tgz.sha256`, `jira-cli-X.Y.Z.tgz` and `jira-cli.tgz` (the latest-version link).
+   - If it fails after tagging, fix the cause and run it again. A rerun also finishes a draft or partial release.

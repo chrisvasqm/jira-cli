@@ -38,12 +38,21 @@ function inline(node: AdfNode): string {
   const text = node.text ?? "";
   const marks = node.marks ?? [];
   const link = marks.find((mark) => mark.type === "link")?.attrs?.["href"];
-  let body = marks.some((mark) => mark.type === "code") ? codeSpan(text) : text;
+  let body = marks.some((mark) => mark.type === "code") ? codeSpan(text) : escapeMarkdown(text);
   for (const mark of marks) {
     const wrap = MARK_WRAP[mark.type];
     if (wrap) body = wrapTrimmed(body, wrap);
   }
   return typeof link === "string" && link !== text ? `[${body}](${link})` : body;
+}
+
+/**
+ * Backslash-escape characters Markdown would read as formatting, so a literal
+ * "*" or "[x]" in a ticket stays literal. Underscores inside words (snake_case)
+ * never start emphasis, so only the others are escaped.
+ */
+function escapeMarkdown(text: string): string {
+  return text.replace(/[\\`*[\]]|(?<![\p{L}\p{N}])_|_(?![\p{L}\p{N}])/gu, (char) => `\\${char}`);
 }
 
 /** Wrap inside surrounding spaces: "bold " becomes "**bold** ", which Markdown reads as emphasis. */
