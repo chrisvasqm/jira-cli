@@ -1,5 +1,6 @@
 import { CliError, notFoundAs } from "../core/errors.js";
 import { HttpClient } from "../core/http.js";
+import { collectPages } from "../core/paging.js";
 import { ISSUE_LIST_FIELDS, type Issue } from "../core/jira-types.js";
 
 export interface Board {
@@ -9,7 +10,7 @@ export interface Board {
   location?: { projectKey?: string; projectName?: string };
 }
 
-export interface BoardColumn {
+interface BoardColumn {
   name: string;
   statusIds: string[];
 }
@@ -26,15 +27,15 @@ export interface Sprint {
   state: "future" | "active" | "closed";
 }
 
-interface Page<T> {
+interface ValuesPage<T> {
   values: T[];
   isLast: boolean;
 }
 
-export interface IssueList {
+interface IssueList {
   issues: Issue[];
   total: number | null;
-  hasMore: boolean | null;
+  hasMore: boolean;
 }
 
 interface IssuePage {
@@ -64,15 +65,22 @@ export class BoardService {
     return this.pageAll<Board>("/rest/agile/1.0/board", {});
   }
 
-  /** Follow startAt/isLast pagination for `values`-style Agile endpoints. */
+  /** Every item of a `values`-style Agile endpoint. */
   private async pageAll<T>(path: string, query: Record<string, string>): Promise<T[]> {
-    const items: T[] = [];
-    for (;;) {
-      const params = new URLSearchParams({ ...query, startAt: String(items.length), maxResults: "50" });
-      const page = await this.http.get<Page<T>>(`${path}?${params}`);
-      items.push(...page.values);
-      if (page.isLast || page.values.length === 0) return items;
-    }
+    const { items } = await collectPages<T>(
+      async (startAt, maxResults) => {
+        const params = new URLSearchParams({
+          ...query,
+          startAt: String(startAt),
+          maxResults: String(maxResults),
+        });
+        const page = await this.http.get<ValuesPage<T>>(`${path}?${params}`);
+        return { items: page.values, isLast: page.isLast };
+      },
+      Number.POSITIVE_INFINITY,
+      50,
+    );
+    return items;
   }
 
   get(boardId: number): Promise<Board> {
@@ -102,30 +110,25 @@ export class BoardService {
     }
   }
 
-  /**
-   * Issues matching the board filter, optionally narrowed by JQL, up to `limit`.
-   * `total` and `hasMore` are null when Jira does not report a total.
-   */
+  /** Issues matching the board filter, optionally narrowed by JQL, up to `limit`. */
   async issues(boardId: number, jql: string | undefined, limit: number): Promise<IssueList> {
-    const issues: Issue[] = [];
-    let total: number | undefined;
-    while (issues.length < limit) {
-      const pageSize = Math.min(50, limit - issues.length);
-      const params = new URLSearchParams({
-        startAt: String(issues.length),
-        maxResults: String(pageSize),
-        fields: ISSUE_LIST_FIELDS,
-      });
-      if (jql) params.set("jql", jql);
-      const page = await this.http
-        .get<IssuePage>(`/rest/agile/1.0/board/${boardId}/issue?${params}`)
-        .catch(boardNotFound(boardId));
-      issues.push(...page.issues);
-      total = page.total ?? total;
-      if (page.issues.length === 0) break;
-      // Jira may cap a page below maxResults; only a short page with no total means the end.
-      if (total === undefined ? page.issues.length < pageSize : issues.length >= total) break;
-    }
-    return { issues, total: total ?? null, hasMore: total === undefined ? null : issues.length < total };
+    const result = await collectPages<Issue>(
+      async (startAt, maxResults) => {
+        const params = new URLSearchParams({
+          startAt: String(startAt),
+          maxResults: String(maxResults),
+          fields: ISSUE_LIST_FIELDS,
+        });
+        if (jql) params.set("jql", jql);
+        const page = await this.http
+          .get<IssuePage>(`/rest/agile/1.0/board/${boardId}/issue?${params}`)
+          .catch(boardNotFound(boardId));
+        return { items: page.issues, total: page.total };
+      },
+      limit,
+      // Jira caps the page size itself; asking for more saves round trips where it allows it.
+      1000,
+    );
+    return { issues: result.items, total: result.total, hasMore: result.hasMore };
   }
 }

@@ -10,18 +10,15 @@ import {
   type IssueSummary,
 } from "../../core/jira-types.js";
 import { printResult, table } from "../../core/output.js";
-import { localTime, renderComment, ticketUrl } from "../render.js";
-import { CommentService, PAGE_SIZE } from "../../services/comment.service.js";
+import { localTime, renderComments, ticketUrl } from "../render.js";
+import { CommentService, MAX_LATEST } from "../../services/comment.service.js";
 import { IssueService } from "../../services/issue.service.js";
 
 interface ViewOptions {
   comments: string;
 }
 
-/** `latest` reads one page, so this is the most it can show. */
-const MAX_COMMENTS = PAGE_SIZE;
-
-export interface TicketView extends IssueSummary {
+interface TicketView extends IssueSummary {
   url: string;
   reporter: string | null;
   labels: string[];
@@ -38,12 +35,12 @@ export function registerView(ticket: Command): void {
     .description("Show a ticket's details, description and latest comments")
     .option(
       "--comments <n>",
-      `How many of the latest comments to show (0 for none, at most ${MAX_COMMENTS})`,
+      `How many of the latest comments to show (0 for none, at most ${MAX_LATEST})`,
       "5",
     )
     .action(async (rawKey: string, opts: ViewOptions, cmd: Command) => {
       const key = issueKey(rawKey);
-      const limit = intInRange(opts.comments, "--comments", 0, MAX_COMMENTS);
+      const limit = intInRange(opts.comments, "--comments", 0, MAX_LATEST);
       const { config, mode } = bootstrap(cmd);
       const [issue, comments] = await Promise.all([
         new IssueService().get(key),
@@ -90,9 +87,7 @@ function renderHuman(view: TicketView): string {
   ];
   const { total, shown } = view.comments;
   if (total !== null && total > 0) {
-    const heading =
-      shown.length < total ? `Comments (latest ${shown.length} of ${total})` : `Comments (${total})`;
-    sections.push([heading, ...shown.map(renderComment)].join("\n\n"));
+    sections.push(renderComments("Comments", shown, total, "latest"));
   }
   return sections.join("\n\n");
 }

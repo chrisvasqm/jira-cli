@@ -23,7 +23,7 @@ export function registerDelete(ticket: Command): void {
       if (!opts.yes) {
         const issue = await issues.get(key);
         const subtasks = opts.withSubtasks ? " and its sub-tasks" : "";
-        await confirm(`Delete ${key} "${issue.fields.summary}"${subtasks}? This cannot be undone.`, opts.yes);
+        await confirm(`Delete ${key} "${issue.fields.summary}"${subtasks}? This cannot be undone.`);
       }
       await issues.remove(key, opts.withSubtasks ?? false);
       printResult(mode, { key, deleted: true }, () => `Deleted ${key}.`);

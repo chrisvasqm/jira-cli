@@ -1,8 +1,9 @@
 import { CliError } from "../core/errors.js";
 import { HttpClient } from "../core/http.js";
 import type { JiraUser } from "../core/jira-types.js";
+import { sameName } from "../core/text.js";
 
-export interface Myself {
+interface Myself {
   accountId: string;
   displayName: string;
   emailAddress?: string;
@@ -30,7 +31,9 @@ export class UserService {
     const found = await this.http.get<FoundUser[]>(`/rest/api/3/user/search?${params}`);
     const people = found.filter((user) => user.active !== false && user.accountType !== "app");
     // The search matches prefixes, so prefer the one exact email or name match.
-    const exact = people.filter((user) => same(user.emailAddress, who) || same(user.displayName, who));
+    const exact = people.filter(
+      (user) => sameName(user.emailAddress, who) || sameName(user.displayName, who),
+    );
     const [match, ...others] = exact.length === 1 ? exact : people;
     if (!match) throw new CliError("USER_NOT_FOUND", `No active Jira user matches "${who}"`);
     if (others.length > 0) {
@@ -47,10 +50,6 @@ export class UserService {
 }
 
 const SEARCH_LIMIT = 10;
-
-function same(value: string | undefined, who: string): boolean {
-  return value !== undefined && value.localeCompare(who, undefined, { sensitivity: "accent" }) === 0;
-}
 
 /** Cloud accountIds look like "557058:3f1c…" or a 24-character hex id. */
 function looksLikeAccountId(who: string): boolean {

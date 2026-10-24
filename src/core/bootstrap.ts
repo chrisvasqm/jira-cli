@@ -3,12 +3,12 @@ import { loadConfig, type Config } from "./config.js";
 import { HttpClient } from "./http.js";
 import type { OutputMode } from "./output.js";
 
-export interface GlobalOptions {
+interface GlobalOptions {
   json?: boolean;
   config?: string;
 }
 
-export interface Context {
+interface Context {
   config: Config;
   /** File the config was loaded from. */
   configPath: string;
@@ -28,5 +28,5 @@ export function bootstrap(cmd: Command): Context {
   const opts = globalOptions(cmd);
   const { config, path } = loadConfig(opts.config);
   HttpClient.configure(config);
-  return { config, configPath: path, mode: opts.json ? "json" : "human" };
+  return { config, configPath: path, mode: outputMode(cmd) };
 }

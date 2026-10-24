@@ -14,7 +14,7 @@ export interface JiraUser {
   displayName: string;
 }
 
-export interface IssueFields {
+interface IssueFields {
   summary: string;
   status: { id: string; name: string };
   issuetype: { name: string };
@@ -29,7 +29,7 @@ export interface Issue {
   fields: IssueFields;
 }
 
-export interface IssueDetailFields extends IssueFields {
+interface IssueDetailFields extends IssueFields {
   reporter?: JiraUser | null;
   created: string;
   labels?: string[];

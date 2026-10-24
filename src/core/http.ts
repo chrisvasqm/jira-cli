@@ -1,18 +1,15 @@
+import { setTimeout as sleep } from "node:timers/promises";
 import { CliError } from "./errors.js";
 
-export interface Credentials {
+interface Credentials {
   baseUrl: string;
   email: string;
   apiToken: string;
 }
 
-export interface RetryPolicy {
-  maxRetries: number;
-  baseDelayMs: number;
-  maxDelayMs: number;
-}
-
-const DEFAULT_RETRY: RetryPolicy = { maxRetries: 3, baseDelayMs: 500, maxDelayMs: 8000 };
+const MAX_RETRIES = 3;
+const BASE_DELAY_MS = 500;
+const MAX_DELAY_MS = 8000;
 const RETRYABLE_STATUS = new Set([429, 502, 503, 504]);
 /** A request that gets no answer in this time fails (and a GET is retried). */
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -23,9 +20,8 @@ const MAX_RETRY_AFTER_MS = 60_000;
 export class HttpClient {
   private static instance: HttpClient | undefined;
 
-  static configure(creds: Credentials, retry: Partial<RetryPolicy> = {}): HttpClient {
-    HttpClient.instance = new HttpClient(creds, { ...DEFAULT_RETRY, ...retry });
-    return HttpClient.instance;
+  static configure(creds: Credentials): void {
+    HttpClient.instance = new HttpClient(creds);
   }
 
   static get(): HttpClient {
@@ -37,10 +33,7 @@ export class HttpClient {
 
   private readonly authHeader: string;
 
-  private constructor(
-    private readonly creds: Credentials,
-    private readonly retry: RetryPolicy,
-  ) {
+  private constructor(private readonly creds: Credentials) {
     const raw = `${creds.email}:${creds.apiToken}`;
     this.authHeader = `Basic ${Buffer.from(raw).toString("base64")}`;
   }
@@ -70,7 +63,7 @@ export class HttpClient {
     if (body !== undefined) init.body = JSON.stringify(body);
 
     for (let attempt = 0; ; attempt++) {
-      const more = attempt < this.retry.maxRetries;
+      const more = attempt < MAX_RETRIES;
       const res = await this.attempt(url, init, idempotent && more);
       if (res === undefined) {
         await sleep(this.backoff(attempt));
@@ -100,22 +93,21 @@ export class HttpClient {
     if (res.status === 401) {
       throw new CliError("AUTH_FAILED", "Jira rejected the credentials (check email, token, and URL).");
     }
-    if (res.status === 403) {
-      const text = await res.text();
-      throw new CliError(
-        "FORBIDDEN",
-        `Your account lacks permission for ${method} ${path}`,
-        parseJson(text) ?? text,
-      );
-    }
     if (res.status === 404) {
       throw new CliError(
         "NOT_FOUND",
         `Jira has no resource at ${path} (check that ${this.creds.baseUrl} is your Jira site)`,
       );
     }
+    const text = await res.text();
+    if (res.status === 403) {
+      throw new CliError(
+        "FORBIDDEN",
+        `Your account lacks permission for ${method} ${path}`,
+        parseJson(text) ?? text,
+      );
+    }
     if (!res.ok) {
-      const text = await res.text();
       throw new CliError(
         "JIRA_ERROR",
         `${method} ${path} returned ${res.status}`,
@@ -123,7 +115,6 @@ export class HttpClient {
         res.status,
       );
     }
-    const text = await res.text();
     if (text.trim() === "") return undefined as T;
     const parsed = parseJson(text);
     if (parsed === undefined) {
@@ -138,9 +129,9 @@ export class HttpClient {
   private backoff(attempt: number, retryAfter?: string | null): number {
     const fromHeader = retryAfterMs(retryAfter);
     if (fromHeader !== undefined) return Math.min(fromHeader, MAX_RETRY_AFTER_MS);
-    const exponential = this.retry.baseDelayMs * 2 ** attempt;
-    const jitter = Math.random() * this.retry.baseDelayMs;
-    return Math.min(exponential + jitter, this.retry.maxDelayMs);
+    const exponential = BASE_DELAY_MS * 2 ** attempt;
+    const jitter = Math.random() * BASE_DELAY_MS;
+    return Math.min(exponential + jitter, MAX_DELAY_MS);
   }
 }
 
@@ -168,8 +159,4 @@ function parseJson(text: string): unknown {
   } catch {
     return undefined;
   }
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolvePromise) => setTimeout(resolvePromise, ms));
 }

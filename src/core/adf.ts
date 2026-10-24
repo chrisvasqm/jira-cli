@@ -107,15 +107,12 @@ function rowCells(row: AdfNode): string[] {
 }
 
 function table(node: AdfNode): string {
-  const rows = (node.content ?? []).map((row) => `| ${rowCells(row).join(" | ")} |`);
-  const width = (node.content ?? []).reduce((widest, row) => Math.max(widest, rowWidth(row)), 0);
-  if (rows.length === 0 || width === 0) return "";
+  const cells = (node.content ?? []).map(rowCells);
+  const width = cells.reduce((widest, row) => Math.max(widest, row.length), 0);
+  if (cells.length === 0 || width === 0) return "";
+  const rows = cells.map((row) => `| ${row.join(" | ")} |`);
   const separator = `|${" --- |".repeat(width)}`;
   return [rows[0], separator, ...rows.slice(1)].join("\n");
-}
-
-function rowWidth(row: AdfNode): number {
-  return (row.content ?? []).reduce((sum, item) => sum + span(item), 0);
 }
 
 function span(item: AdfNode): number {

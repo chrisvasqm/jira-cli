@@ -11,7 +11,7 @@ export function registerEdit(ticket: Command): void {
   const edit = ticket
     .command("edit <key>")
     .description("Change a ticket's fields; only the flags you pass change");
-  fieldOptions(edit).action(async (rawKey: string, opts: FieldOptions, cmd: Command) => {
+  fieldOptions(edit, "edit").action(async (rawKey: string, opts: FieldOptions, cmd: Command) => {
     const key = issueKey(rawKey);
     if (opts.summary !== undefined && !opts.summary.trim())
       throw new CliError("USAGE", "--summary cannot be empty");

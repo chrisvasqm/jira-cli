@@ -18,7 +18,7 @@ export function registerDelete(comment: Command): void {
       const key = issueKey(rawKey);
       const id = commentId(rawId);
       const { mode } = bootstrap(cmd);
-      await confirm(`Delete comment #${id} on ${key}? This cannot be undone.`, opts.yes);
+      if (!opts.yes) await confirm(`Delete comment #${id} on ${key}? This cannot be undone.`);
       await new CommentService().remove(key, id);
       printResult(mode, { key, id, deleted: true }, () => `Deleted comment #${id} on ${key}.`);
     });

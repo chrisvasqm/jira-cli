@@ -1,11 +1,11 @@
-import { basename, join, resolve } from "node:path";
+import { basename, resolve } from "node:path";
 import type { Command } from "commander";
 import { z } from "zod";
 import { globalOptions, outputMode } from "../core/bootstrap.js";
 import { CONFIG_FILE, GLOBAL_CONFIG, configSchema, isGitignored, saveConfig } from "../core/config.js";
 import { CliError } from "../core/errors.js";
 import { HttpClient } from "../core/http.js";
-import { printResult, stripControls, table, type OutputMode } from "../core/output.js";
+import { info, printResult, table, type OutputMode } from "../core/output.js";
 import { ask, askSecret } from "../core/prompt.js";
 import { BoardService } from "../services/board.service.js";
 import { UserService } from "../services/user.service.js";
@@ -18,7 +18,7 @@ const shape = configSchema.shape;
 
 async function askValid<T>(
   prompt: () => Promise<string>,
-  schema: { safeParse: (v: unknown) => { success: boolean; data?: T } },
+  schema: { safeParse: (value: unknown) => { success: boolean; data?: T } },
   hint: string,
 ): Promise<T> {
   for (;;) {
@@ -37,12 +37,8 @@ export function registerSetup(program: Command): void {
       const all = globalOptions(cmd);
       const mode = outputMode(cmd);
       if (opts.global && all.config)
-        throw new CliError("INVALID_OPTIONS", "Use either --global or --config, not both.");
-      const target = opts.global
-        ? GLOBAL_CONFIG
-        : all.config
-          ? resolve(all.config)
-          : join(process.cwd(), CONFIG_FILE);
+        throw new CliError("USAGE", "Use either --global or --config, not both.");
+      const target = opts.global ? GLOBAL_CONFIG : resolve(all.config ?? CONFIG_FILE);
       await runSetup(target, mode);
     });
 }
@@ -65,19 +61,16 @@ async function runSetup(path: string, mode: OutputMode): Promise<void> {
   );
 
   HttpClient.configure({ baseUrl, email, apiToken });
-  const me = await new UserService().myself();
-  process.stderr.write(stripControls(`Authenticated as ${me.displayName}\n`));
-
-  const boards = await new BoardService().listAll();
+  const [me, boards] = await Promise.all([new UserService().myself(), new BoardService().listAll()]);
+  info(`Authenticated as ${me.displayName}`);
   if (boards.length === 0) throw new CliError("NO_BOARDS", "This account can see no boards.");
-  process.stderr.write(
-    stripControls(
-      `${boards
-        .map(
-          (b, i) => `${String(i + 1).padStart(3)}  ${b.name} (${b.type}, ${b.location?.projectKey ?? "?"})`,
-        )
-        .join("\n")}\n`,
-    ),
+  info(
+    boards
+      .map(
+        (item, index) =>
+          `${String(index + 1).padStart(3)}  ${item.name} (${item.type}, ${item.location?.projectKey ?? "?"})`,
+      )
+      .join("\n"),
   );
   const choice = await askValid(
     () => ask("Pick a board number", "1"),

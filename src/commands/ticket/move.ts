@@ -4,6 +4,7 @@ import { bootstrap } from "../../core/bootstrap.js";
 import type { Config } from "../../core/config.js";
 import { CliError } from "../../core/errors.js";
 import { printResult, table } from "../../core/output.js";
+import { sameName } from "../../core/text.js";
 import { BoardService } from "../../services/board.service.js";
 import { TransitionService, type Transition } from "../../services/transition.service.js";
 
@@ -38,14 +39,10 @@ function toView(transition: Transition): TransitionView {
   return { id: transition.id, name: transition.name, to: transition.to.name };
 }
 
-function same(a: string, b: string): boolean {
-  return a.localeCompare(b, undefined, { sensitivity: "accent" }) === 0;
-}
-
 /** Match a transition id, transition name or target status name; then fall back to a board column name. */
 async function pick(transitions: Transition[], target: string, config: Config): Promise<Transition> {
   const direct = transitions.filter(
-    (item) => item.id === target || same(item.name, target) || same(item.to.name, target),
+    (item) => item.id === target || sameName(item.name, target) || sameName(item.to.name, target),
   );
   const matches = direct.length > 0 ? direct : await byColumn(transitions, target, config);
   const statuses = new Set(matches.map((item) => item.to.id));
@@ -67,7 +64,7 @@ async function byColumn(transitions: Transition[], target: string, config: Confi
   // The column fallback is a bonus: if the board cannot be read, report the allowed moves instead.
   const board = await new BoardService().configuration(config.boardId).catch(() => undefined);
   const columns = board?.columns ?? [];
-  const column = columns.find((item) => same(item.name, target));
+  const column = columns.find((item) => sameName(item.name, target));
   if (!column) return [];
   return transitions.filter((item) => column.statusIds.includes(item.to.id));
 }

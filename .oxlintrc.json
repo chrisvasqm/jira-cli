@@ -1,6 +1,20 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["typescript", "unicorn", "oxc"],
-  "categories": { "correctness": "error", "suspicious": "warn" },
-  "rules": { "max-depth": ["error", 2], "no-console": "error" }
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "rules": {
+    "max-depth": ["error", 2],
+    "no-console": "error",
+    "id-length": [
+      "error",
+      {
+        "min": 2,
+        "exceptions": ["_", "T"]
+      }
+    ],
+    "typescript/prefer-for-of": "error"
+  }
 }

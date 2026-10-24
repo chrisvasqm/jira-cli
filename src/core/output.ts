@@ -30,6 +30,11 @@ function keep(char: string): boolean {
   return char === "\n" || char === "\t" || code === 0x200d || (code >= 0xe0020 && code <= 0xe007f);
 }
 
+/** A note for people (progress, hints) on stderr, so stdout stays the result. */
+export function info(text: string): void {
+  process.stderr.write(`${stripControls(text)}\n`);
+}
+
 export function printError(mode: OutputMode, err: unknown): void {
   const code = err instanceof CliError ? err.code : "UNEXPECTED";
   const message = err instanceof Error ? err.message : String(err);

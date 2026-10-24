@@ -1,9 +1,11 @@
 import type { Command } from "commander";
-import { intInRange } from "../../core/args.js";
+import { boardId, intInRange } from "../../core/args.js";
 import { bootstrap } from "../../core/bootstrap.js";
 import { CliError } from "../../core/errors.js";
 import { summarize, type Issue, type IssueSummary } from "../../core/jira-types.js";
+import { quote } from "../../core/jql.js";
 import { printResult } from "../../core/output.js";
+import { sameName } from "../../core/text.js";
 import { BoardService, type BoardConfig, type Sprint } from "../../services/board.service.js";
 import { UserService } from "../../services/user.service.js";
 
@@ -21,6 +23,17 @@ interface ColumnView {
   issues: IssueSummary[];
 }
 
+interface BoardView {
+  boardId: number;
+  boardType: string;
+  jql: string | null;
+  note: string | null;
+  total: number | null;
+  fetched: number;
+  hasMore: boolean;
+  columns: ColumnView[];
+}
+
 interface SprintScope {
   clause: string | undefined;
   note: string | undefined;
@@ -35,46 +48,40 @@ export function registerView(board: Command): void {
       "Sprint boards default to active sprints; 'all' lists every board issue",
     )
     .option("--status <name>", "Only issues in this column (or status) name")
-    .option("--assignee <me|user>", "Only issues assigned to me, or to <user> (email, name or accountId)")
+    .option(
+      "--assignee <me|user>",
+      "Only issues assigned to me, none (unassigned), or <user> (email, name or accountId)",
+    )
     .option("--jql <query>", "Extra JQL appended with AND")
     .option("--order-by <fields>", "JQL sort, e.g. 'updated DESC'")
     .option("--limit <n>", "Maximum issues to fetch", "100")
     .action(async (rawId: string | undefined, opts: BoardOptions, cmd: Command) => {
       const limit = validate(opts);
-      const requested = rawId === undefined ? undefined : intInRange(rawId, "board id", 1);
+      const requested = rawId === undefined ? undefined : boardId(rawId);
       const { config, mode } = bootstrap(cmd);
-      const boardId = requested ?? config.boardId;
+      const id = requested ?? config.boardId;
       const boards = new BoardService();
 
       const needsActive = opts.sprint === undefined || opts.sprint === "active";
-      const [boardConfig, active] = await Promise.all([
-        boards.configuration(boardId),
-        needsActive ? boards.sprints(boardId, "active") : Promise.resolve(undefined),
+      const [boardConfig, active, assignee] = await Promise.all([
+        boards.configuration(id),
+        needsActive ? boards.sprints(id, "active") : Promise.resolve(undefined),
+        assigneeClause(opts.assignee),
       ]);
       const scope = sprintScope(opts.sprint, active);
-      const assignee = await assigneeClause(opts.assignee);
       const jql = buildJql(boardConfig, [scope.clause, assignee], opts);
-      const result = await boards.issues(boardId, jql, limit);
-      const columns = groupByColumn(boardConfig.columns, result.issues);
-
-      printResult(
-        mode,
-        {
-          boardId,
-          boardType: boardConfig.type,
-          jql: jql ?? null,
-          note: scope.note ?? null,
-          total: result.total,
-          fetched: result.issues.length,
-          hasMore: result.hasMore,
-          columns,
-        },
-        // Without a total from Jira, a full page may mean more issues are left.
-        () => {
-          const more = result.hasMore ?? result.issues.length >= limit;
-          return renderHuman(columns, result.total, result.issues.length, more, scope.note);
-        },
-      );
+      const result = await boards.issues(id, jql, limit);
+      const view: BoardView = {
+        boardId: id,
+        boardType: boardConfig.type,
+        jql: jql ?? null,
+        note: scope.note ?? null,
+        total: result.total,
+        fetched: result.issues.length,
+        hasMore: result.hasMore,
+        columns: groupByColumn(boardConfig.columns, result.issues),
+      };
+      printResult(mode, view, () => renderHuman(view));
     });
 }
 
@@ -103,10 +110,11 @@ function sprintScope(option: string | undefined, active: Sprint[] | undefined): 
   return { clause: `sprint in (${active.map((sprint) => sprint.id).join(", ")})`, note: undefined };
 }
 
-/** "me" stays currentUser(); names and emails resolve to an accountId, as in ticket edit. */
+/** "me" stays currentUser() and "none" means unassigned; names and emails resolve to an accountId, as in ticket edit. */
 async function assigneeClause(who: string | undefined): Promise<string | undefined> {
   if (who === undefined) return undefined;
   if (who === "me") return "assignee = currentUser()";
+  if (who === "none") return "assignee is EMPTY";
   const user = await new UserService().resolve(who);
   return `assignee = ${quote(user.accountId)}`;
 }
@@ -126,13 +134,9 @@ function buildJql(
 }
 
 function statusJql(boardConfig: BoardConfig, name: string): string {
-  const column = boardConfig.columns.find((col) => col.name.toLowerCase() === name.toLowerCase());
+  const column = boardConfig.columns.find((col) => sameName(col.name, name));
   if (column && column.statusIds.length > 0) return `status in (${column.statusIds.join(", ")})`;
   return `status = ${quote(name)}`;
-}
-
-function quote(value: string): string {
-  return `"${value.replaceAll("\\", "\\\\").replaceAll('"', '\\"')}"`;
 }
 
 /** Every configured column is kept (possibly empty) so consumers see the board's shape. */
@@ -150,13 +154,7 @@ function groupByColumn(columns: BoardConfig["columns"], issues: Issue[]): Column
   return views;
 }
 
-function renderHuman(
-  columns: ColumnView[],
-  total: number | null,
-  fetched: number,
-  more: boolean,
-  note: string | undefined,
-): string {
+function renderHuman({ columns, total, fetched, hasMore, note }: BoardView): string {
   const header = note ? `note: ${note}\n\n` : "";
   if (fetched === 0) return `${header}No issues match.`;
   const shown = columns.filter((col) => col.issues.length > 0);
@@ -169,6 +167,6 @@ function renderHuman(
     return [`${col.name} (${col.issues.length})`, ...lines].join("\n");
   });
   const of = total === null ? "" : ` of ${total}`;
-  const footer = more ? `\n\nShowing ${fetched}${of}. Raise --limit to see more.` : "";
+  const footer = hasMore ? `\n\nShowing ${fetched}${of}. Raise --limit to see more.` : "";
   return header + blocks.join("\n\n") + footer;
 }

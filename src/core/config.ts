@@ -34,7 +34,7 @@ function walkUp(start: string): string | undefined {
   }
 }
 
-export function findConfigPath(explicit?: string): string | undefined {
+function findConfigPath(explicit?: string): string | undefined {
   if (explicit) return resolve(explicit);
   return walkUp(process.cwd()) ?? (existsSync(GLOBAL_CONFIG) ? GLOBAL_CONFIG : undefined);
 }

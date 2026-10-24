@@ -24,6 +24,18 @@ export function renderComment(comment: CommentView): string {
   return `${comment.author ?? "unknown"} · ${localTime(comment.created)} · #${comment.id}\n${comment.body}`;
 }
 
+/** A heading such as "Comments (latest 5 of 12)" followed by each comment. */
+export function renderComments(
+  title: string,
+  shown: CommentView[],
+  total: number,
+  which: "latest" | "first",
+): string {
+  const heading =
+    shown.length < total ? `${title} (${which} ${shown.length} of ${total})` : `${title} (${total})`;
+  return [heading, ...shown.map(renderComment)].join("\n\n");
+}
+
 /** Link that opens the ticket in the browser. */
 export function ticketUrl(config: Config, key: string): string {
   return `${config.baseUrl}/browse/${key}`;

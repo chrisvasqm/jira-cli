@@ -5,6 +5,7 @@ import { registerComment } from "./commands/comment/index.js";
 import { registerSetup } from "./commands/setup.js";
 import { registerTicket } from "./commands/ticket/index.js";
 import { CliError } from "./core/errors.js";
+import { outputMode } from "./core/bootstrap.js";
 import { printError } from "./core/output.js";
 import { closePrompts } from "./core/prompt.js";
 
@@ -54,6 +55,6 @@ program
     closePrompts();
     if (isHelp(raw)) process.exit(raw.exitCode === 0 ? 0 : 2);
     const err = toCliError(raw);
-    printError(program.opts<{ json?: boolean }>().json ? "json" : "human", err);
+    printError(outputMode(program), err);
     process.exit(exitCode(err));
   });
