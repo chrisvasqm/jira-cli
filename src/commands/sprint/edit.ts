@@ -28,12 +28,15 @@ export function registerEdit(sprint: Command): void {
       if (opts.goal !== undefined) update.goal = opts.goal;
       if (opts.start !== undefined) update.startDate = dateArg(opts.start, "--start");
       if (opts.end !== undefined) update.endDate = dateArg(opts.end, "--end");
-      assertDateOrder(update.startDate, update.endDate);
       if (Object.keys(update).length === 0) {
         throw new CliError("USAGE", "Nothing to change: pass --name, --goal, --start or --end");
       }
       const { mode } = bootstrap(cmd);
-      const view = sprintSummary(await new SprintService().update(id, update));
+      const sprints = new SprintService();
+      // One new bound is checked against the sprint's other one.
+      const current = update.startDate && update.endDate ? undefined : await sprints.get(id);
+      assertDateOrder(update.startDate ?? current?.startDate, update.endDate ?? current?.endDate, "sprint");
+      const view = sprintSummary(await sprints.update(id, update));
       printResult(mode, view, () => `Updated sprint ${id}.\n${renderSprint(view)}`);
     });
 }

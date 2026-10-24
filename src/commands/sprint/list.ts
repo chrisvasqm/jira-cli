@@ -9,13 +9,15 @@ interface ListOptions extends BoardOptions {
   state: string;
 }
 
-const STATES: Record<string, string> = {
-  open: "active,future",
-  active: "active",
-  future: "future",
-  closed: "closed",
-  all: "active,future,closed",
-};
+const STATES = new Map(
+  Object.entries({
+    open: "active,future",
+    active: "active",
+    future: "future",
+    closed: "closed",
+    all: "active,future,closed",
+  }),
+);
 
 export function registerList(sprint: Command): void {
   sprint
@@ -24,7 +26,7 @@ export function registerList(sprint: Command): void {
     .option("-b, --board <id>", "Board id (default: the configured board)")
     .option("-S, --state <state>", "open, active, future, closed or all", "open")
     .action(async (opts: ListOptions, cmd: Command) => {
-      const state = STATES[opts.state.trim().toLowerCase()];
+      const state = STATES.get(opts.state.trim().toLowerCase());
       if (!state) throw new CliError("USAGE", "--state takes open, active, future, closed or all");
       const { boardId, mode } = sprintContext(opts, cmd);
       const found = await new BoardService().sprints(boardId, state);

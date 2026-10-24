@@ -87,9 +87,11 @@ if [[ -n $SPR ]]; then
   run "sprint create -N too long fails" fail -- sprint create -j -N "$(printf 'x%.0s' {1..31})"
   run "sprint create -s bad date fails" fail -- sprint create -j -N x -s nope
   run "sprint create -s impossible date fails" fail -- sprint create -j -N x -s 2030-02-30
+  run "sprint create -s junk after date fails" fail -- sprint create -j -N x -s 2030-01-07junk
   run "sprint create -e before -s fails" fail -- sprint create -j -N x -s 2030-01-21 -e 2030-01-07
   run "sprint edit -N -g" ok -- sprint edit "$SPR" -j -N "Regression sprint 2 (delete)" -g ""
   run "sprint edit nothing fails" fail -- sprint edit "$SPR" -j
+  run "sprint edit -e before start fails" fail -- sprint edit "$SPR" -j -e 2029-12-01
   run "sprint close (future) fails" fail -- sprint close "$SPR" -j -y
   run "ticket edit -S <id>" ok -- ticket edit "$KEY" -j -S "$SPR"
   run "sprint start -e before -s fails" fail -- sprint start "$SPR" -j -s 2030-01-07 -e 2030-01-01
@@ -103,8 +105,7 @@ if [[ -n $SPR ]]; then
   fi
   run "sprint delete without -y fails" fail -- sprint delete "$SPR" -j </dev/null
   run "sprint delete -y" ok -- sprint delete "$SPR" -j -y
-  SPR=""
-  run "sprint view gone fails" fail -- sprint view 999999 -j
+  [[ $(jq -r '.ok' <<<"$LAST") == true ]] && { run "sprint view deleted fails" fail -- sprint view "$SPR" -j; SPR=""; }
 fi
 
 # Delete

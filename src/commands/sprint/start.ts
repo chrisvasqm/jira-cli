@@ -27,7 +27,7 @@ export function registerStart(sprint: Command): void {
       const planned = await sprintIn(id, "future", "start");
       const startDate = start ?? new Date().toISOString();
       const endDate = end ?? new Date(Date.parse(startDate) + plannedLength(planned)).toISOString();
-      assertDateOrder(startDate, endDate);
+      assertDateOrder(startDate, endDate, "sprint");
       const view = sprintSummary(
         await new SprintService().update(id, { state: "active", startDate, endDate }),
       );

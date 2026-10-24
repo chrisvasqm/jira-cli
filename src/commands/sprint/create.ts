@@ -24,7 +24,7 @@ export function registerCreate(sprint: Command): void {
       const name = sprintName(opts.name);
       const startDate = opts.start === undefined ? undefined : dateArg(opts.start, "--start");
       const endDate = opts.end === undefined ? undefined : dateArg(opts.end, "--end");
-      assertDateOrder(startDate, endDate);
+      assertDateOrder(startDate, endDate, "sprint");
       const { boardId, mode } = sprintContext(opts, cmd);
       const created = await new SprintService().create(boardId, {
         name,
