@@ -5,6 +5,7 @@ import { CliError } from "../../core/errors.js";
 import { summarize, type Issue, type IssueSummary } from "../../core/jira-types.js";
 import { printResult } from "../../core/output.js";
 import { BoardService, type BoardConfig, type Sprint } from "../../services/board.service.js";
+import { UserService } from "../../services/user.service.js";
 
 interface BoardOptions {
   sprint?: string;
@@ -34,7 +35,7 @@ export function registerView(board: Command): void {
       "Sprint boards default to active sprints; 'all' lists every board issue",
     )
     .option("--status <name>", "Only issues in this column (or status) name")
-    .option("--assignee <me|user>", "Only issues assigned to me, or to <user> (email or accountId)")
+    .option("--assignee <me|user>", "Only issues assigned to me, or to <user> (email, name or accountId)")
     .option("--jql <query>", "Extra JQL appended with AND")
     .option("--order-by <fields>", "JQL sort, e.g. 'updated DESC'")
     .option("--limit <n>", "Maximum issues to fetch", "100")
@@ -51,7 +52,8 @@ export function registerView(board: Command): void {
         needsActive ? boards.sprints(boardId, "active") : Promise.resolve(undefined),
       ]);
       const scope = sprintScope(opts.sprint, active);
-      const jql = buildJql(boardConfig, scope.clause, opts);
+      const assignee = await assigneeClause(opts.assignee);
+      const jql = buildJql(boardConfig, [scope.clause, assignee], opts);
       const result = await boards.issues(boardId, jql, limit);
       const columns = groupByColumn(boardConfig.columns, result.issues);
 
@@ -67,7 +69,11 @@ export function registerView(board: Command): void {
           hasMore: result.hasMore,
           columns,
         },
-        () => renderHuman(columns, result.total, result.issues.length, result.hasMore, scope.note),
+        // Without a total from Jira, a full page may mean more issues are left.
+        () => {
+          const more = result.hasMore ?? result.issues.length >= limit;
+          return renderHuman(columns, result.total, result.issues.length, more, scope.note);
+        },
       );
     });
 }
@@ -97,16 +103,21 @@ function sprintScope(option: string | undefined, active: Sprint[] | undefined): 
   return { clause: `sprint in (${active.map((sprint) => sprint.id).join(", ")})`, note: undefined };
 }
 
+/** "me" stays currentUser(); names and emails resolve to an accountId, as in ticket edit. */
+async function assigneeClause(who: string | undefined): Promise<string | undefined> {
+  if (who === undefined) return undefined;
+  if (who === "me") return "assignee = currentUser()";
+  const user = await new UserService().resolve(who);
+  return `assignee = ${quote(user.accountId)}`;
+}
+
 function buildJql(
   boardConfig: BoardConfig,
-  sprintClause: string | undefined,
+  extra: (string | undefined)[],
   opts: BoardOptions,
 ): string | undefined {
-  const clauses: string[] = [];
-  if (sprintClause) clauses.push(sprintClause);
+  const clauses = extra.filter((clause) => clause !== undefined);
   if (opts.status) clauses.push(statusJql(boardConfig, opts.status));
-  if (opts.assignee === "me") clauses.push("assignee = currentUser()");
-  else if (opts.assignee) clauses.push(`assignee = ${quote(opts.assignee)}`);
   if (opts.jql) clauses.push(`(${opts.jql})`);
 
   const orderBy = opts.orderBy ? `ORDER BY ${opts.orderBy}` : "";
@@ -143,7 +154,7 @@ function renderHuman(
   columns: ColumnView[],
   total: number | null,
   fetched: number,
-  hasMore: boolean | null,
+  more: boolean,
   note: string | undefined,
 ): string {
   const header = note ? `note: ${note}\n\n` : "";
@@ -157,6 +168,7 @@ function renderHuman(
     });
     return [`${col.name} (${col.issues.length})`, ...lines].join("\n");
   });
-  const more = hasMore ? `\n\nShowing ${fetched} of ${total}. Raise --limit to see more.` : "";
-  return header + blocks.join("\n\n") + more;
+  const of = total === null ? "" : ` of ${total}`;
+  const footer = more ? `\n\nShowing ${fetched}${of}. Raise --limit to see more.` : "";
+  return header + blocks.join("\n\n") + footer;
 }

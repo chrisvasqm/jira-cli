@@ -1,6 +1,6 @@
-import { CliError } from "../core/errors.js";
+import { CliError, notFoundAs } from "../core/errors.js";
 import { HttpClient } from "../core/http.js";
-import type { Issue } from "../core/jira-types.js";
+import { ISSUE_LIST_FIELDS, type Issue } from "../core/jira-types.js";
 
 export interface Board {
   id: number;
@@ -47,7 +47,14 @@ interface BoardConfiguration {
   columnConfig: { columns: { name: string; statuses: { id: string }[] }[] };
 }
 
-export const ISSUE_LIST_FIELDS = "summary,status,issuetype,priority,assignee,updated";
+function boardNotFound(boardId: number): (err: unknown) => never {
+  return notFoundAs("BOARD_NOT_FOUND", `Board ${boardId} does not exist or you cannot see it.`);
+}
+
+/** Jira answers 400 "The board does not support sprints" for kanban and simple boards. */
+function mentionsSprints(details: unknown): boolean {
+  return /sprint/i.test(JSON.stringify(details ?? ""));
+}
 
 /** /rest/agile/1.0/board endpoints. */
 export class BoardService {
@@ -69,11 +76,13 @@ export class BoardService {
   }
 
   get(boardId: number): Promise<Board> {
-    return this.http.get<Board>(`/rest/agile/1.0/board/${boardId}`);
+    return this.http.get<Board>(`/rest/agile/1.0/board/${boardId}`).catch(boardNotFound(boardId));
   }
 
   async configuration(boardId: number): Promise<BoardConfig> {
-    const cfg = await this.http.get<BoardConfiguration>(`/rest/agile/1.0/board/${boardId}/configuration`);
+    const cfg = await this.http
+      .get<BoardConfiguration>(`/rest/agile/1.0/board/${boardId}/configuration`)
+      .catch(boardNotFound(boardId));
     return {
       type: cfg.type,
       columns: cfg.columnConfig.columns.map((col) => ({
@@ -88,8 +97,8 @@ export class BoardService {
     try {
       return await this.pageAll<Sprint>(`/rest/agile/1.0/board/${boardId}/sprint`, { state });
     } catch (err) {
-      if (err instanceof CliError && err.status === 400) return undefined;
-      throw err;
+      if (err instanceof CliError && err.status === 400 && mentionsSprints(err.details)) return undefined;
+      return boardNotFound(boardId)(err);
     }
   }
 
@@ -108,16 +117,15 @@ export class BoardService {
         fields: ISSUE_LIST_FIELDS,
       });
       if (jql) params.set("jql", jql);
-      const page = await this.http.get<IssuePage>(`/rest/agile/1.0/board/${boardId}/issue?${params}`);
+      const page = await this.http
+        .get<IssuePage>(`/rest/agile/1.0/board/${boardId}/issue?${params}`)
+        .catch(boardNotFound(boardId));
       issues.push(...page.issues);
       total = page.total ?? total;
-      if (page.issues.length < pageSize) break;
-      if (total !== undefined && issues.length >= total) break;
+      if (page.issues.length === 0) break;
+      // Jira may cap a page below maxResults; only a short page with no total means the end.
+      if (total === undefined ? page.issues.length < pageSize : issues.length >= total) break;
     }
-    return {
-      issues,
-      total: total ?? null,
-      hasMore: total === null || total === undefined ? null : issues.length < total,
-    };
+    return { issues, total: total ?? null, hasMore: total === undefined ? null : issues.length < total };
   }
 }

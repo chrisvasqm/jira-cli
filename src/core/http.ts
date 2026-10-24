@@ -14,6 +14,10 @@ export interface RetryPolicy {
 
 const DEFAULT_RETRY: RetryPolicy = { maxRetries: 3, baseDelayMs: 500, maxDelayMs: 8000 };
 const RETRYABLE_STATUS = new Set([429, 502, 503, 504]);
+/** A request that gets no answer in this time fails (and a GET is retried). */
+const REQUEST_TIMEOUT_MS = 30_000;
+/** Longest Retry-After wait the client honors. */
+const MAX_RETRY_AFTER_MS = 60_000;
 
 /** Single networking entry point: auth header, JSON encoding, retries with exponential backoff. */
 export class HttpClient {
@@ -41,12 +45,11 @@ export class HttpClient {
     this.authHeader = `Basic ${Buffer.from(raw).toString("base64")}`;
   }
 
-  /** GET is retried on transient failures. */
+  /** GET is retried on transient failures; writes only on 429, which Jira never applied. */
   get<T>(path: string): Promise<T> {
     return this.send<T>("GET", path, undefined, true);
   }
 
-  /** Writes are never retried: Jira may already have applied them. */
   post<T>(path: string, body: unknown): Promise<T> {
     return this.send<T>("POST", path, body, false);
   }
@@ -67,13 +70,14 @@ export class HttpClient {
     if (body !== undefined) init.body = JSON.stringify(body);
 
     for (let attempt = 0; ; attempt++) {
-      const canRetry = idempotent && attempt < this.retry.maxRetries;
-      const res = await this.attempt(url, init, canRetry);
+      const more = attempt < this.retry.maxRetries;
+      const res = await this.attempt(url, init, idempotent && more);
       if (res === undefined) {
         await sleep(this.backoff(attempt));
         continue;
       }
-      if (canRetry && RETRYABLE_STATUS.has(res.status)) {
+      const retryable = res.status === 429 || (idempotent && RETRYABLE_STATUS.has(res.status));
+      if (more && retryable) {
         await res.body?.cancel();
         await sleep(this.backoff(attempt, res.headers.get("Retry-After")));
         continue;
@@ -85,10 +89,10 @@ export class HttpClient {
   /** Returns undefined when the network failed and a retry is allowed. */
   private async attempt(url: string, init: RequestInit, canRetry: boolean): Promise<Response | undefined> {
     try {
-      return await fetch(url, init);
+      return await fetch(url, { ...init, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
     } catch (err) {
       if (canRetry) return undefined;
-      throw new CliError("NETWORK_ERROR", `Could not reach ${this.creds.baseUrl}`, String(err));
+      throw new CliError("NETWORK_ERROR", `Could not reach ${this.creds.baseUrl}`, networkReason(err));
     }
   }
 
@@ -132,12 +136,30 @@ export class HttpClient {
   }
 
   private backoff(attempt: number, retryAfter?: string | null): number {
-    const fromHeader = retryAfter ? Number(retryAfter) * 1000 : Number.NaN;
-    if (Number.isFinite(fromHeader) && fromHeader > 0) return Math.min(fromHeader, this.retry.maxDelayMs);
+    const fromHeader = retryAfterMs(retryAfter);
+    if (fromHeader !== undefined) return Math.min(fromHeader, MAX_RETRY_AFTER_MS);
     const exponential = this.retry.baseDelayMs * 2 ** attempt;
     const jitter = Math.random() * this.retry.baseDelayMs;
     return Math.min(exponential + jitter, this.retry.maxDelayMs);
   }
+}
+
+/** Retry-After as seconds or an HTTP date, in ms from now. */
+function retryAfterMs(header: string | null | undefined): number | undefined {
+  if (!header) return undefined;
+  const seconds = Number(header);
+  const ms = Number.isFinite(seconds) ? seconds * 1000 : Date.parse(header) - Date.now();
+  return Number.isFinite(ms) && ms > 0 ? ms : undefined;
+}
+
+/** undici reports "fetch failed"; the real reason (DNS, TLS, refused) is in `cause`. */
+function networkReason(err: unknown): string {
+  if (err instanceof Error && err.name === "TimeoutError") {
+    return `No answer after ${REQUEST_TIMEOUT_MS / 1000}s`;
+  }
+  const cause = err instanceof Error ? err.cause : undefined;
+  if (cause instanceof Error) return `${err instanceof Error ? err.message : String(err)}: ${cause.message}`;
+  return String(err);
 }
 
 function parseJson(text: string): unknown {

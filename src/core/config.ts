@@ -9,10 +9,15 @@ export const CONFIG_FILE = ".jira-cli.json";
 export const GLOBAL_CONFIG = join(homedir(), ".config", "jira-cli", "config.json");
 
 export const configSchema = z.object({
-  baseUrl: z.url().transform((url) => url.replace(/\/+$/, "")),
+  baseUrl: z
+    .url({ protocol: /^https$/, error: "Use the https:// address of your Jira site" })
+    .transform((url) => url.replace(/\/+$/, "")),
   email: z.email(),
   apiToken: z.string().min(1),
-  projectKey: z.string().min(1),
+  projectKey: z
+    .string()
+    .min(1)
+    .transform((key) => key.trim().toUpperCase()),
   boardId: z.number().int().positive(),
 });
 
@@ -39,6 +44,12 @@ export function loadConfig(explicit?: string): { path: string; config: Config } 
   if (!path) {
     throw new CliError("CONFIG_MISSING", `No ${CONFIG_FILE} found. Run \`jira setup\` first.`);
   }
+  if (!existsSync(path)) {
+    throw new CliError(
+      "CONFIG_MISSING",
+      `${path} does not exist. Run \`jira --config ${path} setup\` first.`,
+    );
+  }
   let raw: unknown;
   try {
     raw = JSON.parse(readFileSync(path, "utf8"));
@@ -54,6 +65,8 @@ export function loadConfig(explicit?: string): { path: string; config: Config } 
 
 export function saveConfig(path: string, config: Config): void {
   mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
+  // Tighten an existing file before the token is written into it.
+  if (existsSync(path)) chmodSync(path, 0o600);
   writeFileSync(path, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
   chmodSync(path, 0o600);
 }

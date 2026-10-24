@@ -11,7 +11,7 @@ export function issueKey(raw: string): string {
 
 /** Whole number between min and max (inclusive), written as plain digits. */
 export function intInRange(raw: string, flag: string, min: number, max = Number.MAX_SAFE_INTEGER): number {
-  const value = /^\d+$/.test(raw) ? Number(raw) : Number.NaN;
+  const value = /^\d+$/.test(raw.trim()) ? Number(raw.trim()) : Number.NaN;
   if (Number.isSafeInteger(value) && value >= min && value <= max) return value;
   const range = max === Number.MAX_SAFE_INTEGER ? `of at least ${min}` : `from ${min} to ${max}`;
   throw new CliError("USAGE", `${flag} must be a whole number ${range}`);

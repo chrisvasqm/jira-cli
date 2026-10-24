@@ -64,7 +64,9 @@ async function pick(transitions: Transition[], target: string, config: Config): 
 }
 
 async function byColumn(transitions: Transition[], target: string, config: Config): Promise<Transition[]> {
-  const { columns } = await new BoardService().configuration(config.boardId);
+  // The column fallback is a bonus: if the board cannot be read, report the allowed moves instead.
+  const board = await new BoardService().configuration(config.boardId).catch(() => undefined);
+  const columns = board?.columns ?? [];
   const column = columns.find((item) => same(item.name, target));
   if (!column) return [];
   return transitions.filter((item) => column.statusIds.includes(item.to.id));

@@ -1,7 +1,7 @@
 import type { AdfNode } from "../core/adf.js";
-import { CliError, ticketNotFound } from "../core/errors.js";
+import { notFoundAs, ticketNotFound } from "../core/errors.js";
 import { HttpClient } from "../core/http.js";
-import type { Comment } from "../core/jira-types.js";
+import { issuePath, type Comment } from "../core/jira-types.js";
 
 export interface CommentPage {
   comments: Comment[];
@@ -10,19 +10,11 @@ export interface CommentPage {
 
 /** A 404 on /comment/{id} can mean the ticket or the comment is missing. */
 function commentNotFound(key: string, id: string): (err: unknown) => never {
-  return (err: unknown) => {
-    if (err instanceof CliError && err.code === "NOT_FOUND") {
-      throw new CliError(
-        "COMMENT_NOT_FOUND",
-        `Comment #${id} on ${key} does not exist or you cannot see it.`,
-      );
-    }
-    throw err;
-  };
+  return notFoundAs("COMMENT_NOT_FOUND", `Comment #${id} on ${key} does not exist, or the ticket does not.`);
 }
 
 /** Jira returns at most 100 comments per page. */
-const PAGE_SIZE = 100;
+export const PAGE_SIZE = 100;
 
 /** /rest/api/3/issue/{key}/comment endpoints. */
 export class CommentService {
@@ -70,6 +62,6 @@ export class CommentService {
   }
 
   private path(key: string): string {
-    return `/rest/api/3/issue/${encodeURIComponent(key)}/comment`;
+    return `${issuePath(key)}/comment`;
   }
 }

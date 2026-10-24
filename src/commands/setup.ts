@@ -5,7 +5,7 @@ import { globalOptions, outputMode } from "../core/bootstrap.js";
 import { CONFIG_FILE, GLOBAL_CONFIG, configSchema, isGitignored, saveConfig } from "../core/config.js";
 import { CliError } from "../core/errors.js";
 import { HttpClient } from "../core/http.js";
-import { printResult, table, type OutputMode } from "../core/output.js";
+import { printResult, stripControls, table, type OutputMode } from "../core/output.js";
 import { ask, askSecret } from "../core/prompt.js";
 import { BoardService } from "../services/board.service.js";
 import { UserService } from "../services/user.service.js";
@@ -66,14 +66,18 @@ async function runSetup(path: string, mode: OutputMode): Promise<void> {
 
   HttpClient.configure({ baseUrl, email, apiToken });
   const me = await new UserService().myself();
-  process.stderr.write(`Authenticated as ${me.displayName}\n`);
+  process.stderr.write(stripControls(`Authenticated as ${me.displayName}\n`));
 
   const boards = await new BoardService().listAll();
   if (boards.length === 0) throw new CliError("NO_BOARDS", "This account can see no boards.");
   process.stderr.write(
-    `${boards
-      .map((b, i) => `${String(i + 1).padStart(3)}  ${b.name} (${b.type}, ${b.location?.projectKey ?? "?"})`)
-      .join("\n")}\n`,
+    stripControls(
+      `${boards
+        .map(
+          (b, i) => `${String(i + 1).padStart(3)}  ${b.name} (${b.type}, ${b.location?.projectKey ?? "?"})`,
+        )
+        .join("\n")}\n`,
+    ),
   );
   const choice = await askValid(
     () => ask("Pick a board number", "1"),

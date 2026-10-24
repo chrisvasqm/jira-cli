@@ -22,7 +22,10 @@ export async function readText(
 }
 
 async function readSource(file: string): Promise<string> {
-  if (file === "-") return readStream(process.stdin);
+  if (file === "-") {
+    if (process.stdin.isTTY) process.stderr.write("Reading from the terminal; end with Ctrl+D.\n");
+    return readStream(process.stdin);
+  }
   return readFile(file, "utf8").catch((err: unknown) => {
     throw new CliError(
       "FILE_ERROR",

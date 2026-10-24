@@ -1,3 +1,4 @@
+import type { Config } from "../core/config.js";
 import type { CommentView } from "../core/jira-types.js";
 
 const LOCAL_TIME = new Intl.DateTimeFormat("en-CA", {
@@ -21,4 +22,9 @@ export function localTime(iso: string): string {
 /** "Ana · 2026-10-23 14:05 GMT-4 · #10001" followed by the body. */
 export function renderComment(comment: CommentView): string {
   return `${comment.author ?? "unknown"} · ${localTime(comment.created)} · #${comment.id}\n${comment.body}`;
+}
+
+/** Link that opens the ticket in the browser. */
+export function ticketUrl(config: Config, key: string): string {
+  return `${config.baseUrl}/browse/${key}`;
 }

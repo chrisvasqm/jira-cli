@@ -10,16 +10,16 @@ import {
   type IssueSummary,
 } from "../../core/jira-types.js";
 import { printResult, table } from "../../core/output.js";
-import { localTime, renderComment } from "../render.js";
-import { CommentService } from "../../services/comment.service.js";
+import { localTime, renderComment, ticketUrl } from "../render.js";
+import { CommentService, PAGE_SIZE } from "../../services/comment.service.js";
 import { IssueService } from "../../services/issue.service.js";
 
 interface ViewOptions {
   comments: string;
 }
 
-/** Jira's comment endpoint returns at most 100 per page. */
-const MAX_COMMENTS = 100;
+/** `latest` reads one page, so this is the most it can show. */
+const MAX_COMMENTS = PAGE_SIZE;
 
 export interface TicketView extends IssueSummary {
   url: string;
@@ -49,7 +49,7 @@ export function registerView(ticket: Command): void {
         new IssueService().get(key),
         limit > 0 ? new CommentService().latest(key, limit) : Promise.resolve(undefined),
       ]);
-      const view = toView(issue, `${config.baseUrl}/browse/${issue.key}`, {
+      const view = toView(issue, ticketUrl(config, issue.key), {
         total: comments?.total ?? null,
         shown: (comments?.comments ?? []).map(toCommentView),
       });

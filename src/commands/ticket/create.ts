@@ -3,6 +3,7 @@ import { issueKey } from "../../core/args.js";
 import { bootstrap } from "../../core/bootstrap.js";
 import { CliError } from "../../core/errors.js";
 import { printResult } from "../../core/output.js";
+import { ticketUrl } from "../render.js";
 import { IssueService } from "../../services/issue.service.js";
 import { buildEdit, fieldOptions, readDescription, type FieldOptions } from "./fields.js";
 
@@ -23,14 +24,15 @@ export function registerCreate(ticket: Command): void {
     if (!opts.summary?.trim()) throw new CliError("USAGE", "--summary is required");
     if (opts.removeLabel?.length) throw new CliError("USAGE", "--remove-label only works with ticket edit");
     const parent = opts.parent === undefined ? undefined : issueKey(opts.parent);
-    const description = await readDescription(opts);
+    // An empty description on create means none, not "clear".
+    const description = (await readDescription(opts)) || undefined;
     const { config, mode } = bootstrap(cmd);
     const { edit } = await buildEdit(opts, description);
     edit.fields["project"] = { key: (opts.project ?? config.projectKey).toUpperCase() };
     edit.fields["issuetype"] = { name: opts.type };
     if (parent) edit.fields["parent"] = { key: parent };
     const created = await new IssueService().create(edit);
-    const result = { key: created.key, id: created.id, url: `${config.baseUrl}/browse/${created.key}` };
+    const result = { key: created.key, id: created.id, url: ticketUrl(config, created.key) };
     printResult(mode, result, () => `Created ${result.key}: ${result.url}`);
   });
 }

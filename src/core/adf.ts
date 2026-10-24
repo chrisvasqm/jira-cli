@@ -101,8 +101,13 @@ function cell(node: AdfNode): string {
   return blocks(node, "<br>").replaceAll("\n", "<br>").replaceAll("|", "\\|");
 }
 
+/** A merged cell (colspan) is followed by empty cells so every row has the same width. */
+function rowCells(row: AdfNode): string[] {
+  return (row.content ?? []).flatMap((item) => [cell(item), ...Array<string>(span(item) - 1).fill("")]);
+}
+
 function table(node: AdfNode): string {
-  const rows = (node.content ?? []).map((row) => `| ${(row.content ?? []).map(cell).join(" | ")} |`);
+  const rows = (node.content ?? []).map((row) => `| ${rowCells(row).join(" | ")} |`);
   const width = (node.content ?? []).reduce((widest, row) => Math.max(widest, rowWidth(row)), 0);
   if (rows.length === 0 || width === 0) return "";
   const separator = `|${" --- |".repeat(width)}`;
@@ -110,10 +115,11 @@ function table(node: AdfNode): string {
 }
 
 function rowWidth(row: AdfNode): number {
-  return (row.content ?? []).reduce(
-    (sum, item) => sum + Math.max(1, Number(item.attrs?.["colspan"]) || 1),
-    0,
-  );
+  return (row.content ?? []).reduce((sum, item) => sum + span(item), 0);
+}
+
+function span(item: AdfNode): number {
+  return Math.max(1, Math.trunc(Number(item.attrs?.["colspan"])) || 1);
 }
 
 function headingLevel(node: AdfNode): number {

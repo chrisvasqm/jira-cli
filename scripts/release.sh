@@ -19,8 +19,9 @@ git fetch -q origin main --tags || die "git fetch failed (a local tag may confli
 head=$(git rev-parse HEAD)
 [ "$head" = "$(git rev-parse origin/main)" ] || die "main is not level with origin/main (git pull --ff-only)"
 [ -f "$notes" ] || die "missing $notes"
-notes_commit=$(git log -1 --format=%H -- "$notes")
-shipped_changes=$(git diff --name-only "$notes_commit" HEAD -- src package.json pnpm-lock.yaml tsconfig.json)
+# The commit that added the notes (later typo fixes to the notes must not hide code changes).
+notes_commit=$(git log --diff-filter=A --format=%H -- "$notes" | tail -1)
+shipped_changes=$(git diff --name-only "$notes_commit" HEAD -- src package.json pnpm-lock.yaml tsconfig.json README.md)
 [ -z "$shipped_changes" ] ||
   die "code changed after $notes was added ($shipped_changes); those changes need their own version bump"
 grep -qF "releases/download/$tag/$asset_name" "$notes" || die "$notes must link releases/download/$tag/$asset_name"

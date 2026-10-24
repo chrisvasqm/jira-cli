@@ -1,5 +1,13 @@
 import { adfToText, type AdfNode } from "./adf.js";
 
+/** Fields `summarize()` reads; every issue request asks for at least these. */
+export const ISSUE_LIST_FIELDS = "summary,status,issuetype,priority,assignee,updated";
+
+/** REST path of one issue. */
+export function issuePath(key: string): string {
+  return `/rest/api/3/issue/${encodeURIComponent(key)}`;
+}
+
 /** Minimal Jira issue fields the CLI reads. Extend as commands need more. */
 export interface JiraUser {
   accountId: string;

@@ -1,5 +1,6 @@
 import { ticketNotFound } from "../core/errors.js";
 import { HttpClient } from "../core/http.js";
+import { issuePath } from "../core/jira-types.js";
 
 export interface Transition {
   id: string;
@@ -25,6 +26,6 @@ export class TransitionService {
   }
 
   private path(key: string): string {
-    return `/rest/api/3/issue/${encodeURIComponent(key)}/transitions`;
+    return `${issuePath(key)}/transitions`;
   }
 }
