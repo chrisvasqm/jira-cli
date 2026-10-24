@@ -1,5 +1,6 @@
 import { ticketNotFound } from "../core/errors.js";
 import { HttpClient } from "../core/http.js";
+import { explainTimeTracking } from "./worklog.service.js";
 import { ISSUE_LIST_FIELDS, issuePath, type IssueDetail } from "../core/jira-types.js";
 
 export interface IssueEdit {
@@ -7,7 +8,7 @@ export interface IssueEdit {
   update: Record<string, unknown[]>;
 }
 
-const ISSUE_DETAIL_FIELDS = `${ISSUE_LIST_FIELDS},reporter,created,labels,description,parent`;
+const ISSUE_DETAIL_FIELDS = `${ISSUE_LIST_FIELDS},reporter,created,labels,description,parent,timetracking`;
 
 /** /rest/api/3/issue endpoints. */
 export class IssueService {
@@ -20,12 +21,15 @@ export class IssueService {
 
   /** POST /issue. `fields` must hold project, issuetype and summary. */
   create(edit: IssueEdit): Promise<{ id: string; key: string }> {
-    return this.http.post<{ id: string; key: string }>("/rest/api/3/issue", edit);
+    return this.http.post<{ id: string; key: string }>("/rest/api/3/issue", edit).catch(explainTimeTracking);
   }
 
   /** PUT /issue/{key}: `fields` sets values, `update` applies operations such as label add/remove. */
   async update(key: string, edit: IssueEdit): Promise<void> {
-    await this.http.put<undefined>(issuePath(key), edit).catch(ticketNotFound(key));
+    await this.http
+      .put<undefined>(issuePath(key), edit)
+      .catch(ticketNotFound(key))
+      .catch(explainTimeTracking);
   }
 
   /** DELETE /issue/{key}. Jira refuses when the ticket has sub-tasks unless `withSubtasks`. */
