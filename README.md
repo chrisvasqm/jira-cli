@@ -4,7 +4,22 @@ A small command-line tool for working with Jira from the terminal as an alternat
 
 ## Install
 
-Download the latest release from the [Releases page](https://github.com/chrisvasqm/jira-cli/releases). Each release lists a one-line `npm install -g` command. You need Node.js 24 or newer.
+You need Node.js 24 or newer. Install or update to the latest release:
+
+```sh
+npm install -g https://github.com/chrisvasqm/jira-cli/releases/latest/download/jira-cli.tgz
+jira setup   # in the directory (project) that should use this Jira board
+```
+
+Each [release](https://github.com/chrisvasqm/jira-cli/releases) also lists the command for that exact version.
+
+### Agent skill
+
+Teach your AI agent (Claude Code, Codex, Cursor and others) to use the CLI:
+
+```sh
+npx skills add chrisvasqm/jira-cli
+```
 
 ## Getting started (development)
 

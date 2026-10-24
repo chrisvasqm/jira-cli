@@ -62,13 +62,16 @@ tar -xzOf "$tarball" package/package.json | node -e '
 ' || die "package.json has runtime dependencies; dist/index.js must bundle them"
 asset="$out/$asset_name"
 [ "$tarball" = "$asset" ] || mv "$tarball" "$asset"
+# Same file under a fixed name, so releases/latest/download/jira-cli.tgz always installs the newest version.
+stable="$out/jira-cli.tgz"
+cp "$asset" "$stable"
 
 git rev-parse -q --verify "refs/tags/$tag" >/dev/null || git tag -a "$tag" -m "jira-cli $tag"
 git push -q origin "$tag"
 if [ "$state" = partial ]; then
-  gh release upload "$tag" "$asset" --clobber
+  gh release upload "$tag" "$asset" "$stable" --clobber
   gh release edit "$tag" --notes-file "$notes" >/dev/null
   echo "uploaded missing $asset_name and refreshed the notes of existing release $tag"
 else
-  gh release create "$tag" "$asset" --verify-tag --title "jira-cli $tag" --notes-file "$notes"
+  gh release create "$tag" "$asset" "$stable" --verify-tag --title "jira-cli $tag" --notes-file "$notes"
 fi
