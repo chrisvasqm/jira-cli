@@ -1,7 +1,11 @@
 import type { Command } from "commander";
 import { textToAdf } from "../../core/adf.js";
+import { CliError } from "../../core/errors.js";
 import { readText } from "../../core/input.js";
+import { sameName } from "../../core/text.js";
+import { BoardService } from "../../services/board.service.js";
 import type { IssueEdit } from "../../services/issue.service.js";
+import { SprintService } from "../../services/sprint.service.js";
 import { UserService } from "../../services/user.service.js";
 
 /** Field flags shared by `ticket create` and `ticket edit`. */
@@ -13,7 +17,11 @@ export interface FieldOptions {
   assignee?: string;
   addLabel?: string[];
   removeLabel?: string[];
+  sprint?: string;
 }
+
+/** Where `--sprint` puts the ticket: a sprint, or null for the backlog. */
+export type SprintTarget = { id: number; name: string } | null;
 
 function collect(value: string, previous: string[] = []): string[] {
   return [...previous, value];
@@ -27,7 +35,8 @@ export function fieldOptions(cmd: Command, use: "create" | "edit"): Command {
     .option("--description-file <path>", "Read the description from a file (- reads stdin)")
     .option("--priority <name>", "Priority name, e.g. High")
     .option("--assignee <who>", "me, none, an email, a name or an accountId")
-    .option("--add-label <label>", "Add a label (repeat for more)", collect);
+    .option("--add-label <label>", "Add a label (repeat for more)", collect)
+    .option("--sprint <sprint>", "active, a sprint id or name, or none for the backlog (configured board)");
   if (use === "edit") cmd.option("--remove-label <label>", "Remove a label (repeat for more)", collect);
   return cmd;
 }
@@ -43,7 +52,7 @@ export async function readDescription(opts: FieldOptions): Promise<string | unde
 }
 
 export function hasFieldFlags(opts: FieldOptions, description: string | undefined): boolean {
-  const values = [opts.summary, description, opts.priority, opts.assignee];
+  const values = [opts.summary, description, opts.priority, opts.assignee, opts.sprint];
   return (
     values.some((value) => value !== undefined) ||
     (opts.addLabel?.length ?? 0) + (opts.removeLabel?.length ?? 0) > 0
@@ -67,6 +76,41 @@ export async function buildEdit(
   ];
   if (labels.length > 0) update["labels"] = labels;
   return { edit: { fields, update }, changed: [...Object.keys(fields), ...Object.keys(update)] };
+}
+
+/**
+ * Resolve `--sprint` on the configured board before anything is written, so a typo
+ * fails before a ticket is created or changed.
+ */
+export async function resolveSprint(raw: string, boardId: number): Promise<SprintTarget> {
+  const wanted = raw.trim();
+  if (wanted === "none") return null;
+  if (/^\d+$/.test(wanted)) {
+    const sprint = await new SprintService().get(Number(wanted));
+    return { id: sprint.id, name: sprint.name };
+  }
+  const sprints = await new BoardService().sprints(boardId, wanted === "active" ? "active" : "active,future");
+  if (sprints === undefined) throw new CliError("NO_SPRINTS", `Board ${boardId} does not use sprints.`);
+  const matches = wanted === "active" ? sprints : sprints.filter((sprint) => sameName(sprint.name, wanted));
+  const [match, ...others] = matches;
+  const options = sprints.map((sprint) => ({ id: sprint.id, name: sprint.name, state: sprint.state }));
+  if (match && others.length === 0) return { id: match.id, name: match.name };
+  if (!match && wanted === "active")
+    throw new CliError("NO_ACTIVE_SPRINT", `Board ${boardId} has no active sprint.`);
+  if (!match) {
+    throw new CliError("SPRINT_NOT_FOUND", `No open sprint named "${wanted}" on board ${boardId}.`, options);
+  }
+  throw new CliError(
+    "SPRINT_AMBIGUOUS",
+    `"${wanted}" matches ${matches.length} sprints; pass a sprint id.`,
+    options,
+  );
+}
+
+/** Put the ticket in the sprint, or back in the backlog for null. */
+export async function moveToSprint(key: string, target: SprintTarget): Promise<void> {
+  const sprints = new SprintService();
+  await (target === null ? sprints.toBacklog(key) : sprints.add(target.id, key));
 }
 
 async function assignee(who: string): Promise<{ accountId: string } | null> {

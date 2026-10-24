@@ -42,7 +42,8 @@ jira ticket view KAN-12 [--comments <0-100>]          # fields, description, lat
 jira ticket create --summary "..." [--type Bug] [--parent KAN-3] [--project KEY] [field flags]
 jira ticket edit KAN-12 [field flags] [--remove-label y]
 #   field flags: --description <text> ("" clears on edit) | --description-file <path|->, --priority <name>,
-#                --assignee me|none|<email|name|accountId>, --add-label x (repeatable)
+#                --assignee me|none|<email|name|accountId>, --add-label x (repeatable),
+#                --sprint active|<sprint id>|<sprint name>|none (none = backlog; sprints of the configured board)
 jira ticket move KAN-12 [target]  # no target: list allowed moves; target: status, transition name or id, or column
 jira ticket delete KAN-12 --yes [--with-subtasks]
 jira comment list KAN-12 [--limit <n>]                # oldest first (50)
@@ -58,9 +59,9 @@ jira comment delete KAN-12 10001 --yes
   - If `hasMore` is true, raise `--limit`.
 - `board list`: `{boards: [{id, name, type, projectKey, current}]}`
 - `board use`: `{boardId, name, projectKey, config}`
-- `ticket view`: `{key, url, type, status, summary, priority, assignee, reporter, labels, parent: {key, summary}|null, created, updated, description, comments: {total, shown: [comment]}}`
+- `ticket view`: `{key, url, type, status, summary, priority, assignee, reporter, labels, parent: {key, summary}|null, sprint: {id, name, state}|null, created, updated, description, comments: {total, shown: [comment]}}`
   - `comments.total` is null with `--comments 0`.
-- `ticket create`: `{key, id, url}`
+- `ticket create`: `{key, id, url, sprint: {id, name}|null}`
 - `ticket edit`: `{key, url, changed}`
 - `ticket move`: `{key, transitions: [{id, name, to}]}` with no target; `{key, status, transition}` with one.
 - `comment list`: `{key, total, comments: [comment]}`
@@ -77,7 +78,9 @@ A `comment` is `{id, author, created, updated, body}`. People are display names,
 - `NO_TRANSITION`: `details` lists the allowed moves `[{id, name, to}]`. Pick one, or ask the user.
 - `TRANSITION_AMBIGUOUS`: pass a transition `id` from `details`.
 - `USER_NOT_FOUND`, `USER_AMBIGUOUS`: use the exact email or accountId. `details` lists the candidates.
-- `NO_SPRINTS`, `NO_ACTIVE_SPRINT`: use `--sprint all`.
+- `NO_SPRINTS`, `NO_ACTIVE_SPRINT`: on `board`, use `--sprint all`; on create or edit, drop `--sprint` (the board has no sprints or none is active).
+- `SPRINT_NOT_FOUND`, `SPRINT_AMBIGUOUS`: `details` lists the board's open sprints `[{id, name, state}]`. Pass one's id.
+- A create error that says "Created KEY, but…" means the ticket exists (`details.key`). Don't create it again; fix the cause and run `ticket edit KEY --sprint …`.
 - `CONFIRM_REQUIRED`: see Deletes above.
 - `FILE_ERROR`: the `--file` path can't be read.
 - `FORBIDDEN`, `JIRA_ERROR`: Jira refused. Report `details` (`details.errors` names the bad fields).

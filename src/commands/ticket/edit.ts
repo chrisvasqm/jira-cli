@@ -5,7 +5,15 @@ import { CliError } from "../../core/errors.js";
 import { printResult } from "../../core/output.js";
 import { ticketUrl } from "../render.js";
 import { IssueService } from "../../services/issue.service.js";
-import { buildEdit, fieldOptions, hasFieldFlags, readDescription, type FieldOptions } from "./fields.js";
+import {
+  buildEdit,
+  fieldOptions,
+  hasFieldFlags,
+  moveToSprint,
+  readDescription,
+  resolveSprint,
+  type FieldOptions,
+} from "./fields.js";
 
 export function registerEdit(ticket: Command): void {
   const edit = ticket
@@ -20,8 +28,13 @@ export function registerEdit(ticket: Command): void {
       throw new CliError("USAGE", "Nothing to change. Pass at least one field flag (see --help)");
     }
     const { config, mode } = bootstrap(cmd);
+    const sprint = opts.sprint === undefined ? undefined : await resolveSprint(opts.sprint, config.boardId);
     const { edit: payload, changed } = await buildEdit(opts, description);
-    await new IssueService().update(key, payload);
+    if (changed.length > 0) await new IssueService().update(key, payload);
+    if (sprint !== undefined) {
+      await moveToSprint(key, sprint);
+      changed.push("sprint");
+    }
     const result = { key, url: ticketUrl(config, key), changed };
     printResult(mode, result, () => `Updated ${key}: ${changed.join(", ")}.`);
   });

@@ -12,7 +12,9 @@ import {
 import { printResult, table } from "../../core/output.js";
 import { localTime, renderComments, ticketUrl } from "../render.js";
 import { CommentService, MAX_LATEST } from "../../services/comment.service.js";
+import type { Sprint } from "../../services/board.service.js";
 import { IssueService } from "../../services/issue.service.js";
+import { SprintService } from "../../services/sprint.service.js";
 
 interface ViewOptions {
   comments: string;
@@ -23,6 +25,7 @@ interface TicketView extends IssueSummary {
   reporter: string | null;
   labels: string[];
   parent: { key: string; summary: string | null } | null;
+  sprint: { id: number; name: string; state: string } | null;
   created: string;
   description: string;
   /** total is null when comments were not requested (--comments 0). */
@@ -42,11 +45,13 @@ export function registerView(ticket: Command): void {
       const key = issueKey(rawKey);
       const limit = intInRange(opts.comments, "--comments", 0, MAX_LATEST);
       const { config, mode } = bootstrap(cmd);
-      const [issue, comments] = await Promise.all([
+      const [issue, comments, sprint] = await Promise.all([
         new IssueService().get(key),
         limit > 0 ? new CommentService().latest(key, limit) : Promise.resolve(undefined),
+        // The sprint is extra: sites without Jira Software (or the agile API) still show the ticket.
+        new SprintService().ofIssue(key).catch(() => null),
       ]);
-      const view = toView(issue, ticketUrl(config, issue.key), {
+      const view = toView(issue, ticketUrl(config, issue.key), sprint, {
         total: comments?.total ?? null,
         shown: (comments?.comments ?? []).map(toCommentView),
       });
@@ -54,7 +59,12 @@ export function registerView(ticket: Command): void {
     });
 }
 
-function toView(issue: IssueDetail, url: string, comments: TicketView["comments"]): TicketView {
+function toView(
+  issue: IssueDetail,
+  url: string,
+  sprint: Sprint | null,
+  comments: TicketView["comments"],
+): TicketView {
   const { fields } = issue;
   return {
     ...summarize(issue),
@@ -62,6 +72,7 @@ function toView(issue: IssueDetail, url: string, comments: TicketView["comments"
     reporter: fields.reporter?.displayName ?? null,
     labels: fields.labels ?? [],
     parent: fields.parent ? { key: fields.parent.key, summary: fields.parent.fields?.summary ?? null } : null,
+    sprint: sprint && { id: sprint.id, name: sprint.name, state: sprint.state },
     created: fields.created,
     description: adfToText(fields.description),
     comments,
@@ -77,6 +88,7 @@ function renderHuman(view: TicketView): string {
     ["Reporter", view.reporter ?? "unknown"],
   ];
   if (view.parent) rows.push(["Parent", `${view.parent.key} ${view.parent.summary ?? ""}`.trim()]);
+  if (view.sprint) rows.push(["Sprint", `${view.sprint.name} (${view.sprint.state}, #${view.sprint.id})`]);
   if (view.labels.length > 0) rows.push(["Labels", view.labels.join(", ")]);
   rows.push(["Created", localTime(view.created)], ["Updated", localTime(view.updated)], ["URL", view.url]);
 
