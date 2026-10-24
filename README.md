@@ -110,8 +110,8 @@ The agent adds `--json` to each command, so it reads exact data and stable error
 | `jira report workload`                | Open tickets per person and status                                            |
 | `jira report sprint [id]`             | A sprint's done and not-done tickets (default: active, else last closed)      |
 | `jira report velocity`                | Tickets and points done per closed sprint (`-n, --sprints <n>`, 6)            |
-| `jira user search <text>`             | People whose name or email starts with the text (`-n, --limit <n>`, 20)    |
-| `jira user view [who]`                | A user: `me` (default), an email, a name or an accountId                   |
+| `jira user search <text>`             | People whose name or email starts with the text (`-n, --limit <n>`, 20)       |
+| `jira user view [who]`                | A user: `me` (default), an email, a name or an accountId                      |
 | `jira setup`                          | Create the config (see [Set up](#set-up))                                     |
 
 - **Board filters:**
