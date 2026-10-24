@@ -48,9 +48,13 @@ export function registerList(epic: Command): void {
       const project = opts.project === undefined ? undefined : projectKey(opts.project);
       const { config, mode } = bootstrap(cmd);
       const status = opts.status ? `status = ${quote(opts.status)}` : "statusCategory != Done";
-      const jql = `project = ${quote(project ?? config.projectKey)} AND issuetype = Epic AND ${status} ORDER BY updated DESC`;
-      const found = await new SearchService().issues(jql, limit);
-      const children = await new EpicService().children(
+      const key = project ?? config.projectKey;
+      const epics = new EpicService();
+      const types = await epics.typeIds(key);
+      const jql = `project = ${quote(key)} AND issuetype in (${types.join(", ")}) AND ${status} ORDER BY updated DESC`;
+      const found =
+        types.length === 0 ? { issues: [], hasMore: false } : await new SearchService().issues(jql, limit);
+      const children = await epics.children(
         found.issues.map((issue) => issue.key),
         MAX_CHILDREN,
       );

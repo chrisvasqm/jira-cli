@@ -25,6 +25,14 @@ export function hasProjectFieldFlags(opts: ProjectFieldOptions): boolean {
   return opts.component !== undefined || opts.fixVersion !== undefined;
 }
 
+/** The Jira fields the flags passed will set, e.g. ["components"]. */
+export function projectFieldNames(opts: ProjectFieldOptions): string[] {
+  return [
+    ...(opts.component === undefined ? [] : ["components"]),
+    ...(opts.fixVersion === undefined ? [] : ["fixVersions"]),
+  ];
+}
+
 /** "a, b,,c" → ["a", "b", "c"]; "" → [] (clear). */
 function names(raw: string): string[] {
   return raw

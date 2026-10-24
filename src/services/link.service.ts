@@ -112,11 +112,15 @@ export class LinkService {
     );
   }
 
-  /** Deletes an issue link, only when it belongs to `key`. */
-  async remove(key: string, id: string): Promise<LinkView> {
+  /** The ticket's issue link `id`; LINK_NOT_FOUND when it does not belong to `key`. */
+  async find(key: string, id: string): Promise<LinkView> {
     const link = (await this.list(key)).find((item) => item.id === id);
     if (!link) throw new CliError("LINK_NOT_FOUND", `${key} has no link ${id}.`);
-    await this.http.delete<undefined>(`/rest/api/3/issueLink/${id}`).catch(linkNotFound(key, id));
     return link;
+  }
+
+  /** Deletes an issue link; check it belongs to `key` with `find` first. */
+  async remove(key: string, id: string): Promise<void> {
+    await this.http.delete<undefined>(`/rest/api/3/issueLink/${id}`).catch(linkNotFound(key, id));
   }
 }
