@@ -27,6 +27,7 @@ interface BoardView {
   boardId: number;
   boardType: string;
   jql: string | null;
+  sprintIds: number[] | null;
   note: string | null;
   total: number | null;
   fetched: number;
@@ -35,7 +36,8 @@ interface BoardView {
 }
 
 interface SprintScope {
-  clause: string | undefined;
+  /** Sprints to read issues from; undefined means the whole board. */
+  sprintIds: number[] | undefined;
   note: string | undefined;
 }
 
@@ -69,12 +71,13 @@ export function registerView(board: Command): void {
         assigneeClause(opts.assignee),
       ]);
       const scope = sprintScope(opts.sprint, active);
-      const jql = buildJql(boardConfig, [scope.clause, assignee], opts);
-      const result = await boards.issues(id, jql, limit);
+      const jql = buildJql(boardConfig, [assignee], opts);
+      const result = await boards.issues(id, jql, limit, scope.sprintIds);
       const view: BoardView = {
         boardId: id,
         boardType: boardConfig.type,
         jql: jql ?? null,
+        sprintIds: scope.sprintIds ?? null,
         note: scope.note ?? null,
         total: result.total,
         fetched: result.issues.length,
@@ -96,18 +99,18 @@ function validate(opts: BoardOptions): number {
 
 /** `active` is undefined when the board has no sprint support; only fetched when needed. */
 function sprintScope(option: string | undefined, active: Sprint[] | undefined): SprintScope {
-  const none: SprintScope = { clause: undefined, note: undefined };
+  const none: SprintScope = { sprintIds: undefined, note: undefined };
   if (option === "all") return none;
-  if (option !== undefined && option !== "active") return { clause: `sprint = ${option}`, note: undefined };
+  if (option !== undefined && option !== "active") return { sprintIds: [Number(option)], note: undefined };
   if (active === undefined) {
     if (option === "active") throw new CliError("NO_SPRINTS", "This board does not use sprints.");
     return none;
   }
   if (active.length === 0) {
     if (option === "active") throw new CliError("NO_ACTIVE_SPRINT", "This board has no active sprint.");
-    return { clause: undefined, note: "No active sprint; showing every issue on the board." };
+    return { sprintIds: undefined, note: "No active sprint; showing every issue on the board." };
   }
-  return { clause: `sprint in (${active.map((sprint) => sprint.id).join(", ")})`, note: undefined };
+  return { sprintIds: active.map((sprint) => sprint.id), note: undefined };
 }
 
 /** "me" stays currentUser() and "none" means unassigned; names and emails resolve to an accountId, as in ticket edit. */
