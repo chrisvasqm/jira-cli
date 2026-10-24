@@ -79,6 +79,23 @@ run "comment edit -f stdin" ok -- comment edit "$KEY" "$CID" -j -f - <<<"Edited 
 run "comment delete without -y fails" fail -- comment delete "$KEY" "$CID" -j </dev/null
 run "comment delete -y" ok -- comment delete "$KEY" "$CID" -j -y
 
+# Worklogs and estimates (soft: the site may have time tracking off)
+run "ticket edit -es -re" soft -- ticket edit "$KEY" -j -es 1d -re 6h
+run "ticket edit -es bad fails" fail -- ticket edit "$KEY" -j -es 2x
+run "worklog add bad duration fails" fail -- worklog add "$KEY" 0h -j
+run "worklog add -sd -d" soft -- worklog add "$KEY" 2h30m -j -sd 2026-10-20 -d "Regression worklog"
+WID=$(jq -r '.data.worklog.id // empty' <<<"$LAST")
+run "worklog add -f stdin" soft -- worklog add "$KEY" 45m -j -f - <<<"Worklog from stdin"
+run "worklog list -n" soft -- worklog list "$KEY" -j -n 10
+if [[ -n $WID ]]; then
+  run "ticket view time tracking" ok -- ticket view "$KEY" -j -n 0
+  [[ $(jq -r '.data.timeTracking.spent // empty' <<<"$LAST") == "3h 15m" ]] && { PASS=$((PASS + 1)); echo "PASS ticket view time spent"; } || { FAIL=$((FAIL + 1)); echo "FAIL ticket view time spent $(jq -c .data.timeTracking <<<"$LAST")"; }
+  run "worklog delete without -y fails" fail -- worklog delete "$KEY" "$WID" -j </dev/null
+  run "worklog delete -y" ok -- worklog delete "$KEY" "$WID" -j -y
+  run "worklog delete unknown fails" fail -- worklog delete "$KEY" 999999999 -j -y
+  code_is "worklog delete unknown: WORKLOG_NOT_FOUND" WORKLOG_NOT_FOUND
+fi
+
 # Reports
 run "report flow -da -n" ok -- report flow -j -da 7 -n 50
 run "report workload -n" ok -- report workload -j -n 50

@@ -35,6 +35,28 @@ export function commentId(raw: string): string {
   return id;
 }
 
+/** Worklog ids are numeric; accepts "#10001" as shown in the output. */
+export function worklogId(raw: string): string {
+  const id = raw.trim().replace(/^#/, "");
+  if (!/^\d+$/.test(id)) throw new CliError("USAGE", `"${raw}" is not a worklog id like 10001`);
+  return id;
+}
+
+const DURATION = /^(?:(\d+)w)?(?:(\d+)d)?(?:(\d+)h)?(?:(\d+)m)?$/;
+
+/** "2h30m", "2h 30m", "1d" or "45m" (weeks, days, hours, minutes) in Jira's form, e.g. "2h 30m". */
+export function duration(raw: string, what: string): string {
+  const parts = DURATION.exec(raw.replace(/\s+/g, "").toLowerCase());
+  const amounts = (parts?.slice(1) ?? []).map((value) => Number(value ?? 0));
+  if (!parts || amounts.every((amount) => amount === 0)) {
+    throw new CliError("USAGE", `${what} must look like 2h30m, 1d or 45m (w, d, h and m)`);
+  }
+  return amounts
+    .map((amount, index) => (amount > 0 ? `${amount}${"wdhm"[index]}` : ""))
+    .filter(Boolean)
+    .join(" ");
+}
+
 /** Throws USAGE unless `end` is after `start` (both ISO strings, when given); `what` names the thing. */
 export function assertDateOrder(start: string | undefined, end: string | undefined, what: string): void {
   if (start && end && Date.parse(end) <= Date.parse(start)) {
