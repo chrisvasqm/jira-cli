@@ -1,4 +1,4 @@
-import { notFoundAs, ticketNotFound } from "../core/errors.js";
+import { CliError, notFoundAs, ticketNotFound } from "../core/errors.js";
 import { HttpClient } from "../core/http.js";
 import { issuePath } from "../core/jira-types.js";
 
@@ -38,6 +38,13 @@ export class RemoteLinkService {
       .post<{ id: number }>(this.path(key), { object: { url, title } })
       .catch(ticketNotFound(key));
     return toWebLinkView({ id: created.id, object: { url, title } });
+  }
+
+  /** The ticket's web link `id` (the number without the "w" prefix); LINK_NOT_FOUND when it has none. */
+  async find(key: string, id: string): Promise<WebLinkView> {
+    const link = (await this.list(key)).find((item) => item.id === `${WEB_LINK_PREFIX}${id}`);
+    if (!link) throw new CliError("LINK_NOT_FOUND", `${key} has no web link ${WEB_LINK_PREFIX}${id}.`);
+    return link;
   }
 
   /** `id` is the number without the "w" prefix. */

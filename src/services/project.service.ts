@@ -18,6 +18,12 @@ export interface Component {
   lead?: JiraUser;
 }
 
+export interface IssueType {
+  id: string;
+  name: string;
+  hierarchyLevel?: number;
+}
+
 export interface Version {
   id: string;
   name: string;
@@ -56,6 +62,14 @@ export class ProjectService {
       limit,
       100,
     );
+  }
+
+  /** The project's issue types; hierarchyLevel is 1 for epics, 0 for standard types, -1 for sub-tasks. */
+  async issueTypes(key: string): Promise<IssueType[]> {
+    const project = await this.http
+      .get<{ issueTypes?: IssueType[] }>(this.path(key))
+      .catch(projectNotFound(key));
+    return project.issueTypes ?? [];
   }
 
   /** Every component of the project (Jira does not page this list). */

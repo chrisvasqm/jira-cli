@@ -1,6 +1,7 @@
 import { CliError, notFoundAs } from "../core/errors.js";
 import { HttpClient } from "../core/http.js";
 import { ISSUE_LIST_FIELDS, issuePath, isDone, type Issue } from "../core/jira-types.js";
+import { ProjectService } from "./project.service.js";
 import { SearchService } from "./search.service.js";
 
 /** Epics sit one level above standard issue types in both company- and team-managed projects. */
@@ -21,6 +22,7 @@ export class EpicService {
   constructor(
     private readonly http = HttpClient.get(),
     private readonly search = new SearchService(),
+    private readonly projects = new ProjectService(),
   ) {}
 
   /** EPIC_NOT_FOUND when the key is missing; NOT_AN_EPIC when the ticket is another type. */
@@ -39,6 +41,12 @@ export class EpicService {
     return issue;
   }
 
+  /** Ids of the project's epic-level issue types, whatever the site named them; [] when it has none. */
+  async typeIds(project: string): Promise<string[]> {
+    const types = await this.projects.issueTypes(project);
+    return types.filter(isEpic).map((type) => type.id);
+  }
+
   /** Children of the given epics, oldest first. hasMore: more than `limit` exist. */
   async children(keys: string[], limit: number): Promise<{ issues: ChildIssue[]; hasMore: boolean }> {
     if (keys.length === 0) return { issues: [], hasMore: false };
@@ -49,7 +57,7 @@ export class EpicService {
 }
 
 /** hierarchyLevel marks an epic even when the site renamed the type; the name is the fallback. */
-function isEpic(type: Issue["fields"]["issuetype"]): boolean {
+function isEpic(type: { name: string; hierarchyLevel?: number }): boolean {
   return type.hierarchyLevel === undefined
     ? type.name.toLowerCase() === "epic"
     : type.hierarchyLevel === EPIC_LEVEL;

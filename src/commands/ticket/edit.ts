@@ -24,6 +24,7 @@ import {
 } from "./fields.js";
 import {
   hasProjectFieldFlags,
+  projectFieldNames,
   projectFieldOptions,
   resolveProjectFields,
   type ProjectFieldOptions,
@@ -55,12 +56,10 @@ export function registerEdit(ticket: Command): void {
     const keys = await selectedKeys(selection, opts, config);
     // Resolve everything (sprint, user, components, versions) before the first write.
     const sprint = opts.sprint === undefined ? undefined : await resolveSprint(opts.sprint, config.boardId);
-    const listed = hasProjectFieldFlags(opts)
-      ? await projectFields(opts, keys, selection.bulk)
-      : new Map<string, Record<string, unknown>>();
+    const fieldsOf = hasProjectFieldFlags(opts) ? await projectFields(opts, keys) : undefined;
     const { edit: base, changed: baseChanged } = await buildEdit(opts, description);
     const apply = async (key: string): Promise<Edited> => {
-      const extra = listed.get(projectOfKey(key)) ?? {};
+      const extra = fieldsOf ? await fieldsOf(key) : {};
       const changed = [...baseChanged, ...Object.keys(extra)];
       if (changed.length > 0) {
         await new IssueService().update(key, { fields: { ...base.fields, ...extra }, update: base.update });
@@ -76,8 +75,7 @@ export function registerEdit(ticket: Command): void {
       printResult(mode, result, () => `Updated ${result.key}: ${result.changed.join(", ")}.`);
       return;
     }
-    const [someFields = {}] = listed.values();
-    const fields = [...baseChanged, ...Object.keys(someFields), ...(sprint === undefined ? [] : ["sprint"])];
+    const fields = [...baseChanged, ...projectFieldNames(opts), ...(sprint === undefined ? [] : ["sprint"])];
     await confirmBulk(keys, `Change ${fields.join(", ")}`, opts.yes);
     const result = await applyAll(keys, apply);
     printBulk(mode, result, (item) => `Updated ${item.key}: ${item.changed.join(", ")}.`);
@@ -86,27 +84,26 @@ export function registerEdit(ticket: Command): void {
   bulkOptions(edit);
 }
 
-/** "KAN-12" → "KAN". */
-function projectOfKey(key: string): string {
-  return key.slice(0, key.lastIndexOf("-"));
-}
-
 /**
- * Component and version ids for each project, keyed by project key. One ticket asks Jira
- * for its project (as before); several use their key prefix, so one lookup serves many.
+ * Component and version ids for a ticket. Each ticket's project comes from Jira, not its key
+ * prefix (a moved ticket keeps its old key), and every project is resolved before the first
+ * write so a typo fails first. A ticket whose lookup failed is asked again, so it fails alone.
  */
 async function projectFields(
   opts: ProjectFieldOptions,
   keys: string[],
-  bulk: boolean,
-): Promise<Map<string, Record<string, unknown>>> {
-  const [first = ""] = keys;
-  const projects = bulk
-    ? new Set(keys.map(projectOfKey))
-    : new Set([await new IssueService().projectOf(first)]);
+): Promise<(key: string) => Promise<Record<string, unknown>>> {
+  const issues = new IssueService();
+  const found = await applyAll(keys, async (key) => [key, await issues.projectOf(key)] as const);
+  const projectOf = new Map(found.updated);
   const listed = new Map<string, Record<string, unknown>>();
-  for (const project of projects) listed.set(project, await resolveProjectFields(opts, project));
-  // A single ticket may have moved project: its fields belong to its key whatever the prefix.
-  if (!bulk) listed.set(projectOfKey(first), [...listed.values()][0] ?? {});
-  return listed;
+  for (const project of new Set(projectOf.values())) {
+    listed.set(project, await resolveProjectFields(opts, project));
+  }
+  return async (key) => {
+    const project = projectOf.get(key) ?? (await issues.projectOf(key));
+    const fields = listed.get(project) ?? (await resolveProjectFields(opts, project));
+    listed.set(project, fields);
+    return fields;
+  };
 }

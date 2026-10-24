@@ -22,9 +22,11 @@ export function registerRemove(link: Command): void {
       const { web, id } = linkId(rawId);
       const shown = web ? `${WEB_LINK_PREFIX}${id}` : id;
       const { mode } = bootstrap(cmd);
+      const service = web ? new RemoteLinkService() : new LinkService();
+      // A missing ticket or link fails before the question.
+      await service.find(key, id);
       if (!opts.yes) await confirm(`Remove link ${shown} from ${key}?`);
-      if (web) await new RemoteLinkService().remove(key, id);
-      else await new LinkService().remove(key, id);
+      await service.remove(key, id);
       printResult(mode, { key, id: shown, deleted: true }, () => `Removed link ${shown} from ${key}.`);
     });
 }

@@ -43,16 +43,19 @@ export class ChangelogService {
     if (first.isLast === true || first.values.length >= first.total) {
       return { entries: first.values.slice(-limit).toReversed(), total: first.total };
     }
+    // Entries from `offset` on are wanted; the ones the first page already holds are kept.
     const offset = Math.max(0, first.total - limit);
+    const kept = first.values.slice(offset);
+    const from = offset + kept.length;
     const rest = await collectPages<Changelog>(
       async (startAt, maxResults) => {
-        const page = await this.page(key, offset + startAt, maxResults);
-        return { items: page.values, total: page.total - offset, isLast: page.isLast };
+        const page = await this.page(key, from + startAt, maxResults);
+        return { items: page.values, total: page.total - from, isLast: page.isLast };
       },
-      first.total - offset,
+      first.total - from,
       PAGE_SIZE,
     );
-    return { entries: rest.items.toReversed(), total: first.total };
+    return { entries: [...kept, ...rest.items].toReversed(), total: first.total };
   }
 
   private page(key: string, startAt: number, maxResults: number): Promise<ChangelogPage> {
