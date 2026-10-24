@@ -1,5 +1,6 @@
 import { createInterface, type Interface } from "node:readline";
 import { stdin, stderr } from "node:process";
+import { Writable } from "node:stream";
 import { CliError } from "./errors.js";
 
 const eof = (): CliError => new CliError("INPUT_EOF", "Input ended before all prompts were answered.");
@@ -12,8 +13,17 @@ interface Waiter {
 
 let rl: Interface | undefined;
 let ended = false;
+let muted = false;
 const queued: string[] = [];
 const waiters: Waiter[] = [];
+
+/** stderr, except that typed characters are hidden while a secret is entered. */
+const output = new Writable({
+  write(chunk: Buffer | string, _encoding, done) {
+    if (!muted) stderr.write(chunk);
+    done();
+  },
+});
 
 /**
  * One shared interface that buffers every line, so piped input is never dropped
@@ -21,7 +31,7 @@ const waiters: Waiter[] = [];
  */
 function iface(): Interface {
   if (rl) return rl;
-  rl = createInterface({ input: stdin, output: stderr });
+  rl = createInterface({ input: stdin, output, terminal: Boolean(stdin.isTTY) });
   rl.on("line", (line) => {
     const waiter = waiters.shift();
     if (waiter) waiter.resolve(line);
@@ -39,18 +49,10 @@ function failAll(err: Error): void {
   for (const waiter of waiters.splice(0)) waiter.reject(err);
 }
 
-/**
- * Detach readline so it neither echoes nor buffers raw keystrokes. Its close
- * listener is removed first: this close is ours, not the end of input.
- */
-function suspend(): void {
+export function closePrompts(): void {
   rl?.removeAllListeners("close");
   rl?.close();
   rl = undefined;
-}
-
-export function closePrompts(): void {
-  suspend();
 }
 
 function nextLine(): Promise<string> {
@@ -69,34 +71,15 @@ export async function ask(question: string, fallback?: string): Promise<string> 
   return answer || fallback || "";
 }
 
+/** Like ask, but nothing typed is shown. */
 export async function askSecret(question: string): Promise<string> {
-  if (!stdin.isTTY) return ask(question);
-  suspend();
+  const io = iface();
   stderr.write(`${question}: `);
-  return new Promise((resolvePromise, reject) => {
-    let value = "";
-    const finish = (settle: () => void): void => {
-      stdin.setRawMode(false);
-      stdin.pause();
-      stdin.off("data", onData);
-      stderr.write("\n");
-      settle();
-    };
-    const onData = (chunk: string): void => {
-      for (const char of chunk) {
-        if (char === "\r" || char === "\n") return finish(() => resolvePromise(value.trim()));
-        if (char === "\u0003") return finish(() => reject(interrupted()));
-        if (char === "\u0004") return finish(() => reject(eof()));
-        if (char === "\u007f" || char === "\b") {
-          value = value.slice(0, -1);
-          continue;
-        }
-        value += char;
-      }
-    };
-    stdin.setRawMode(true);
-    stdin.setEncoding("utf8");
-    stdin.on("data", onData);
-    stdin.resume();
-  });
+  muted = true;
+  try {
+    return (await nextLine()).trim();
+  } finally {
+    muted = false;
+    if (io.terminal) stderr.write("\n");
+  }
 }
