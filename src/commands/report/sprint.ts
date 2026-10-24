@@ -3,7 +3,7 @@ import { intInRange } from "../../core/args.js";
 import { CliError } from "../../core/errors.js";
 import { isDone, type Issue } from "../../core/jira-types.js";
 import { grid, printResult, table } from "../../core/output.js";
-import type { Sprint } from "../../services/board.service.js";
+import { onlyActive, type Sprint } from "../../services/board.service.js";
 import { SprintService } from "../../services/sprint.service.js";
 import {
   boardSprints,
@@ -43,9 +43,9 @@ export function registerSprint(report: Command): void {
     });
 }
 
-/** The active sprint, or else the most recently closed one. */
+/** The active sprint (SPRINT_AMBIGUOUS when there are several), or else the most recently closed one. */
 async function currentSprint(ctx: BoardContext): Promise<Sprint> {
-  const [active] = await boardSprints(ctx, "active");
+  const active = onlyActive(ctx.boardId, await boardSprints(ctx, "active"));
   if (active) return active;
   const closed = await boardSprints(ctx, "closed");
   const latest = closed.toSorted((left, right) =>

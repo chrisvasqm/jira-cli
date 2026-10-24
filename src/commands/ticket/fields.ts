@@ -3,7 +3,7 @@ import { textToAdf } from "../../core/adf.js";
 import { CliError } from "../../core/errors.js";
 import { readText } from "../../core/input.js";
 import { sameName } from "../../core/text.js";
-import { BoardService } from "../../services/board.service.js";
+import { BoardService, onlyActive } from "../../services/board.service.js";
 import type { IssueEdit } from "../../services/issue.service.js";
 import { SprintService } from "../../services/sprint.service.js";
 import { UserService } from "../../services/user.service.js";
@@ -90,19 +90,27 @@ export async function buildEdit(
  */
 export async function resolveSprint(raw: string, boardId: number): Promise<SprintTarget> {
   const wanted = raw.trim();
-  if (wanted === "none") return null;
+  // The keywords ignore case, like sprint names do.
+  const keyword = wanted.toLowerCase();
+  if (keyword === "none") return null;
   if (/^\d+$/.test(wanted)) {
     const sprint = await new SprintService().get(Number(wanted));
     return { id: sprint.id, name: sprint.name };
   }
-  const sprints = await new BoardService().sprints(boardId, wanted === "active" ? "active" : "active,future");
+  const sprints = await new BoardService().sprints(
+    boardId,
+    keyword === "active" ? "active" : "active,future",
+  );
   if (sprints === undefined) throw new CliError("NO_SPRINTS", `Board ${boardId} does not use sprints.`);
-  const matches = wanted === "active" ? sprints : sprints.filter((sprint) => sameName(sprint.name, wanted));
+  if (keyword === "active") {
+    const active = onlyActive(boardId, sprints);
+    if (!active) throw new CliError("NO_ACTIVE_SPRINT", `Board ${boardId} has no active sprint.`);
+    return { id: active.id, name: active.name };
+  }
+  const matches = sprints.filter((sprint) => sameName(sprint.name, wanted));
   const [match, ...others] = matches;
   const options = sprints.map((sprint) => ({ id: sprint.id, name: sprint.name, state: sprint.state }));
   if (match && others.length === 0) return { id: match.id, name: match.name };
-  if (!match && wanted === "active")
-    throw new CliError("NO_ACTIVE_SPRINT", `Board ${boardId} has no active sprint.`);
   if (!match) {
     throw new CliError("SPRINT_NOT_FOUND", `No open sprint named "${wanted}" on board ${boardId}.`, options);
   }

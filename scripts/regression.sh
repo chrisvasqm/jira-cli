@@ -24,6 +24,15 @@ run() {
   LAST=$out
 }
 
+# code_is <name> <code>: the last run failed with exactly this error code.
+code_is() {
+  if [[ $(jq -r '.error.code // empty' <<<"$LAST") == "$2" ]]; then
+    PASS=$((PASS + 1)); echo "PASS $1"
+  else
+    FAIL=$((FAIL + 1)); echo "FAIL $1 $(head -c 300 <<<"$LAST")"
+  fi
+}
+
 cleanup() {
   [[ -n $SPR ]] && "${J[@]}" sprint delete "$SPR" -y -j >/dev/null 2>&1
   [[ -n $SUB ]] && "${J[@]}" ticket delete "$SUB" -y -j >/dev/null 2>&1
@@ -100,6 +109,18 @@ if [[ -n $SPR ]]; then
   if [[ $(jq -r '.data.state // empty' <<<"$LAST") == active ]]; then
     run "sprint start (active) fails" fail -- sprint start "$SPR" -j
     run "sprint view <id>" ok -- sprint view "$SPR" -j
+    # Two active sprints only when the board already had one: the default must not pick one silently.
+    ACTIVE=$("${J[@]}" sprint list -j -S active | jq '.data.sprints | length' 2>/dev/null)
+    if [[ ${ACTIVE:-0} -gt 1 ]]; then
+      run "sprint view, 2 active fails" fail -- sprint view -j
+      code_is "sprint view, 2 active: SPRINT_AMBIGUOUS" SPRINT_AMBIGUOUS
+      run "report sprint, 2 active fails" fail -- report sprint -j
+      code_is "report sprint, 2 active: SPRINT_AMBIGUOUS" SPRINT_AMBIGUOUS
+      run "ticket edit -S active, 2 active fails" fail -- ticket edit "$KEY" -j -S active
+      code_is "ticket edit -S active, 2 active: SPRINT_AMBIGUOUS" SPRINT_AMBIGUOUS
+    else
+      SOFT=$((SOFT + 1)); echo "SOFT two active sprints not set up (active: ${ACTIVE:-error}); SPRINT_AMBIGUOUS not checked"
+    fi
     run "sprint close without -y fails" fail -- sprint close "$SPR" -j </dev/null
     run "sprint close -y" ok -- sprint close "$SPR" -j -y
   fi

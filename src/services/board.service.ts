@@ -76,6 +76,19 @@ function mentionsSprints(details: unknown): boolean {
   return /sprint/i.test(JSON.stringify(details ?? ""));
 }
 
+/**
+ * The one active sprint in `active`. Boards with parallel sprints can have several: then
+ * `SPRINT_AMBIGUOUS` lists them, as `--sprint active` does, instead of picking one silently.
+ */
+export function onlyActive(boardId: number, active: Sprint[]): Sprint | undefined {
+  if (active.length <= 1) return active[0];
+  throw new CliError(
+    "SPRINT_AMBIGUOUS",
+    `Board ${boardId} has ${active.length} active sprints; pass a sprint id.`,
+    active.map((sprint) => ({ id: sprint.id, name: sprint.name, state: sprint.state })),
+  );
+}
+
 /** /rest/agile/1.0/board endpoints. */
 export class BoardService {
   constructor(private readonly http = HttpClient.get()) {}

@@ -1,7 +1,7 @@
 import type { Command } from "commander";
 import { CliError } from "../../core/errors.js";
 import { printResult } from "../../core/output.js";
-import { BoardService } from "../../services/board.service.js";
+import { BoardService, onlyActive } from "../../services/board.service.js";
 import { SprintService } from "../../services/sprint.service.js";
 import { renderSprint, sprintContext, sprintId, sprintSummary, type BoardOptions } from "./common.js";
 
@@ -22,7 +22,7 @@ export function registerView(sprint: Command): void {
 async function activeSprint(boardId: number) {
   const active = await new BoardService().sprints(boardId, "active");
   if (active === undefined) throw new CliError("NO_SPRINTS", `Board ${boardId} does not use sprints.`);
-  const [first] = active;
+  const first = onlyActive(boardId, active);
   if (!first) throw new CliError("NO_ACTIVE_SPRINT", `Board ${boardId} has no active sprint.`);
   return first;
 }
