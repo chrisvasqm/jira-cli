@@ -1,11 +1,24 @@
 import type { AdfNode } from "../core/adf.js";
-import { ticketNotFound } from "../core/errors.js";
+import { CliError, ticketNotFound } from "../core/errors.js";
 import { HttpClient } from "../core/http.js";
 import type { Comment } from "../core/jira-types.js";
 
 export interface CommentPage {
   comments: Comment[];
   total: number;
+}
+
+/** A 404 on /comment/{id} can mean the ticket or the comment is missing. */
+function commentNotFound(key: string, id: string): (err: unknown) => never {
+  return (err: unknown) => {
+    if (err instanceof CliError && err.code === "NOT_FOUND") {
+      throw new CliError(
+        "COMMENT_NOT_FOUND",
+        `Comment #${id} on ${key} does not exist or you cannot see it.`,
+      );
+    }
+    throw err;
+  };
 }
 
 /** Jira returns at most 100 comments per page. */
@@ -41,6 +54,14 @@ export class CommentService {
 
   add(key: string, body: AdfNode): Promise<Comment> {
     return this.http.post<Comment>(this.path(key), { body }).catch(ticketNotFound(key));
+  }
+
+  update(key: string, id: string, body: AdfNode): Promise<Comment> {
+    return this.http.put<Comment>(`${this.path(key)}/${id}`, { body }).catch(commentNotFound(key, id));
+  }
+
+  async remove(key: string, id: string): Promise<void> {
+    await this.http.delete<undefined>(`${this.path(key)}/${id}`).catch(commentNotFound(key, id));
   }
 
   private page(key: string, startAt: number, maxResults: number, orderBy: string): Promise<CommentPage> {

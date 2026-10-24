@@ -46,7 +46,11 @@ function renderDetails(details: unknown): string | undefined {
     ];
     if (lines.length > 0) return lines.map((line) => `  ${line}`).join("\n");
   }
-  return JSON.stringify(details, null, 2);
+  if (Array.isArray(details) && details.every((item) => typeof item === "string")) {
+    return details.map((line) => `  ${line}`).join("\n");
+  }
+  // Structured details (e.g. allowed transitions) are for --json; the message already explains.
+  return undefined;
 }
 
 export function table(rows: ReadonlyArray<readonly [string, string]>): string {

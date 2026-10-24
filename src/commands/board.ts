@@ -7,6 +7,7 @@ import { printResult } from "../core/output.js";
 import { BoardService, type BoardConfig, type Sprint } from "../services/board.service.js";
 
 interface BoardOptions {
+  board?: string;
   sprint?: string;
   status?: string;
   assignee?: string;
@@ -29,6 +30,7 @@ export function registerBoard(program: Command): void {
   program
     .command("board")
     .description("List the tickets on the configured board, grouped by column")
+    .option("--board <id>", "Board id (default: boardId from config)")
     .option(
       "--sprint <active|id|all>",
       "Sprint boards default to active sprints; 'all' lists every board issue",
@@ -41,22 +43,23 @@ export function registerBoard(program: Command): void {
     .action(async (opts: BoardOptions, cmd: Command) => {
       const limit = validate(opts);
       const { config, mode } = bootstrap(cmd);
+      const boardId = opts.board === undefined ? config.boardId : intInRange(opts.board, "--board", 1);
       const boards = new BoardService();
 
       const needsActive = opts.sprint === undefined || opts.sprint === "active";
       const [boardConfig, active] = await Promise.all([
-        boards.configuration(config.boardId),
-        needsActive ? boards.sprints(config.boardId, "active") : Promise.resolve(undefined),
+        boards.configuration(boardId),
+        needsActive ? boards.sprints(boardId, "active") : Promise.resolve(undefined),
       ]);
       const scope = sprintScope(opts.sprint, active);
       const jql = buildJql(boardConfig, scope.clause, opts);
-      const result = await boards.issues(config.boardId, jql, limit);
+      const result = await boards.issues(boardId, jql, limit);
       const columns = groupByColumn(boardConfig.columns, result.issues);
 
       printResult(
         mode,
         {
-          boardId: config.boardId,
+          boardId,
           boardType: boardConfig.type,
           jql: jql ?? null,
           note: scope.note ?? null,
