@@ -16,3 +16,10 @@ export function intInRange(raw: string, flag: string, min: number, max = Number.
   const range = max === Number.MAX_SAFE_INTEGER ? `of at least ${min}` : `from ${min} to ${max}`;
   throw new CliError("USAGE", `${flag} must be a whole number ${range}`);
 }
+
+/** Comment ids are numeric; accepts "#10001" as shown in the output. */
+export function commentId(raw: string): string {
+  const id = raw.trim().replace(/^#/, "");
+  if (!/^\d+$/.test(id)) throw new CliError("USAGE", `"${raw}" is not a comment id like 10001`);
+  return id;
+}
