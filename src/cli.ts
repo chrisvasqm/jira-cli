@@ -7,6 +7,7 @@ import { registerSetup } from "./commands/setup.js";
 import { registerSprint } from "./commands/sprint/index.js";
 import { registerTicket } from "./commands/ticket/index.js";
 import { registerUser } from "./commands/user/index.js";
+import { registerWatcher } from "./commands/watcher/index.js";
 import { CliError } from "./core/errors.js";
 import { outputMode } from "./core/bootstrap.js";
 import { expandShortFlags, FlagCommand } from "./core/flags.js";
@@ -30,6 +31,7 @@ registerBoard(program);
 registerTicket(program);
 registerSprint(program);
 registerComment(program);
+registerWatcher(program);
 registerReport(program);
 registerUser(program);
 
