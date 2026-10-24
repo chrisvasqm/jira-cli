@@ -9,7 +9,7 @@ description: Read and update Jira Cloud tickets from the shell with the `jira` C
 
 ## Setup
 
-- **Is it installed?** Check with `jira -v`. If it is missing, ask the user before installing it (it needs Node.js 24 or newer): `npm install -g https://github.com/chrisvasqm/jira-cli/releases/latest/download/jira-cli.tgz`
+- **Is it installed?** Check with `jira -v`. If it is missing, ask the user before installing it (it needs Node.js 24 or newer): `curl -fsSL https://raw.githubusercontent.com/chrisvasqm/jira-cli/main/install.sh | sh`
 - **Config.** The user runs `jira setup` in the project directory. It asks for the URL, email, API token, board and project, and writes `.jira-cli.json`.
   - Never run `jira setup` yourself.
   - Never ask for the token in chat.

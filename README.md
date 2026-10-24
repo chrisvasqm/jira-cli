@@ -7,10 +7,10 @@
 You need Node.js 24 or newer. To install the latest release, or update to it, run:
 
 ```sh
-npm install -g https://github.com/chrisvasqm/jira-cli/releases/latest/download/jira-cli.tgz
+curl -fsSL https://raw.githubusercontent.com/chrisvasqm/jira-cli/main/install.sh | sh
 ```
 
-Each [release](https://github.com/chrisvasqm/jira-cli/releases) also lists the command for that exact version.
+The [script](install.sh) checks your Node.js version, then runs `npm install -g` on the latest release. Each [release](https://github.com/chrisvasqm/jira-cli/releases) also lists the command for that exact version.
 
 To teach your AI agent (Claude Code, Codex, Cursor and others) to use the CLI, run:
 
