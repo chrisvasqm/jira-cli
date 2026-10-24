@@ -1,6 +1,7 @@
 import type { Command } from "commander";
 import { textToAdf } from "../../core/adf.js";
 import { CliError } from "../../core/errors.js";
+import { duration } from "../../core/args.js";
 import { readText } from "../../core/input.js";
 import { sameName } from "../../core/text.js";
 import { BoardService, onlyActive } from "../../services/board.service.js";
@@ -18,6 +19,9 @@ export interface FieldOptions {
   addLabel?: string[];
   removeLabel?: string[];
   sprint?: string;
+  /** Jira durations, already checked by `duration` while parsing. */
+  estimate?: string;
+  remaining?: string;
 }
 
 /** Where `--sprint` puts the ticket: a sprint, or null for the backlog. */
@@ -42,6 +46,12 @@ export function fieldOptions(cmd: Command, use: "create" | "edit"): Command {
     .option(
       "-sp, --sprint <sprint>",
       "active, a sprint id or name, or none for the backlog (configured board)",
+    )
+    .option("-es, --estimate <duration>", "Original estimate, e.g. 2h30m or 1d", (raw: string) =>
+      duration(raw, "--estimate"),
+    )
+    .option("-re, --remaining <duration>", "Remaining estimate, e.g. 4h", (raw: string) =>
+      duration(raw, "--remaining"),
     );
   if (use === "edit") cmd.option("-rl, --remove-label <label>", "Remove a label (repeat for more)", collect);
   return cmd;
@@ -58,7 +68,15 @@ export async function readDescription(opts: FieldOptions): Promise<string | unde
 }
 
 export function hasFieldFlags(opts: FieldOptions, description: string | undefined): boolean {
-  const values = [opts.summary, description, opts.priority, opts.assignee, opts.sprint];
+  const values = [
+    opts.summary,
+    description,
+    opts.priority,
+    opts.assignee,
+    opts.sprint,
+    opts.estimate,
+    opts.remaining,
+  ];
   return (
     values.some((value) => value !== undefined) ||
     (opts.addLabel?.length ?? 0) + (opts.removeLabel?.length ?? 0) > 0
@@ -81,6 +99,8 @@ export async function buildEdit(
     ...(opts.removeLabel ?? []).map((label) => ({ remove: label })),
   ];
   if (labels.length > 0) update["labels"] = labels;
+  const timetracking = { originalEstimate: opts.estimate, remainingEstimate: opts.remaining };
+  if (opts.estimate !== undefined || opts.remaining !== undefined) fields["timetracking"] = timetracking;
   return { edit: { fields, update }, changed: [...Object.keys(fields), ...Object.keys(update)] };
 }
 

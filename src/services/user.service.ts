@@ -1,4 +1,4 @@
-import { CliError } from "../core/errors.js";
+import { CliError, notFoundAs } from "../core/errors.js";
 import { HttpClient } from "../core/http.js";
 import type { JiraUser } from "../core/jira-types.js";
 import { sameName } from "../core/text.js";
@@ -9,10 +9,12 @@ interface Myself {
   emailAddress?: string;
 }
 
-interface FoundUser extends JiraUser {
+/** A user as /user/search and /user return it; the email shows only when the profile allows. */
+export interface FoundUser extends JiraUser {
   emailAddress?: string;
   active?: boolean;
   accountType?: string;
+  timeZone?: string;
 }
 
 /** /rest/api/3/myself and user lookups. */
@@ -23,13 +25,40 @@ export class UserService {
     return this.http.get<Myself>("/rest/api/3/myself");
   }
 
+  /** One user by accountId; USER_NOT_FOUND when Jira has no such account. */
+  get(accountId: string): Promise<FoundUser> {
+    const params = new URLSearchParams({ accountId });
+    return this.http
+      .get<FoundUser>(`/rest/api/3/user?${params}`)
+      .catch(notFoundAs("USER_NOT_FOUND", `No Jira user has accountId "${accountId}"`));
+  }
+
+  /**
+   * Active people whose name or email starts with `text`, at most `limit`.
+   * With `project`, only people who can be assigned tickets in that project.
+   */
+  async search(text: string, limit: number, project?: string): Promise<FoundUser[]> {
+    const params = new URLSearchParams({ query: text, maxResults: String(limit) });
+    let path = "/rest/api/3/user/search";
+    if (project !== undefined) {
+      params.set("project", project);
+      path = "/rest/api/3/user/assignable/search";
+    }
+    const found = await this.http
+      .get<FoundUser[]>(`${path}?${params}`)
+      .catch(
+        notFoundAs("PROJECT_NOT_FOUND", `Project ${project ?? ""} does not exist or you cannot see it.`),
+      );
+    return found.filter(isPerson);
+  }
+
   /** "me", an accountId, or an email or name to search for. */
   async resolve(who: string): Promise<JiraUser> {
     if (who === "me") return this.myself();
     if (looksLikeAccountId(who)) return { accountId: who, displayName: who };
     const params = new URLSearchParams({ query: who, maxResults: String(SEARCH_LIMIT) });
     const found = await this.http.get<FoundUser[]>(`/rest/api/3/user/search?${params}`);
-    const people = found.filter((user) => user.active !== false && user.accountType !== "app");
+    const people = found.filter(isPerson);
     // The search matches prefixes, so prefer the one exact email or name match.
     const exact = people.filter(
       (user) => sameName(user.emailAddress, who) || sameName(user.displayName, who),
@@ -50,6 +79,11 @@ export class UserService {
 }
 
 const SEARCH_LIMIT = 10;
+
+/** Active human accounts: not deactivated, not an app or bot. */
+function isPerson(user: FoundUser): boolean {
+  return user.active !== false && user.accountType !== "app";
+}
 
 /** Cloud accountIds look like "557058:3f1c…" or a 24-character hex id. */
 function looksLikeAccountId(who: string): boolean {

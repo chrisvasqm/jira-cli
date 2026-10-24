@@ -114,7 +114,7 @@ function sprintScope(option: string | undefined, active: Sprint[] | undefined): 
 }
 
 /** "me" stays currentUser() and "none" means unassigned; names and emails resolve to an accountId, as in ticket edit. */
-async function assigneeClause(who: string | undefined): Promise<string | undefined> {
+export async function assigneeClause(who: string | undefined): Promise<string | undefined> {
   if (who === undefined) return undefined;
   if (who === "me") return "assignee = currentUser()";
   if (who === "none") return "assignee is EMPTY";
