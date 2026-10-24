@@ -15,7 +15,7 @@ The [script](install.sh) checks your Node.js version, downloads the latest relea
 To teach your AI agent (Claude Code, Codex, Cursor and others) to use the CLI, run:
 
 ```sh
-npx skills add chrisvasqm/jira-cli
+npx skills add chrisvasqm/skills --skill jira-cli
 ```
 
 ## Set up
@@ -104,7 +104,7 @@ Exit codes:
 - `130`: cancelled with Ctrl+C
 - `1`: any other error
 
-The [agent skill](skills/jira-cli/SKILL.md) lists the data shapes and every error code.
+The [agent skill](https://github.com/chrisvasqm/skills/blob/main/skills/jira-cli/SKILL.md) lists the data shapes and every error code.
 
 ## Development
 
