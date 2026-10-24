@@ -6,7 +6,7 @@ set -u
 REPO=${1:?repo path}
 J=(node "$REPO/dist/index.js")
 PASS=0 FAIL=0 SOFT=0
-KEY="" SUB="" SPR=""
+KEY="" SUB="" SPR="" RNK=""
 
 # run <name> <expect: ok|fail|soft> -- cmd...   (soft = may fail on some boards/projects)
 run() {
@@ -36,6 +36,7 @@ code_is() {
 cleanup() {
   [[ -n $SPR ]] && "${J[@]}" sprint delete "$SPR" -y -j >/dev/null 2>&1
   [[ -n $SUB ]] && "${J[@]}" ticket delete "$SUB" -y -j >/dev/null 2>&1
+  [[ -n $RNK ]] && "${J[@]}" ticket delete "$RNK" -y -j >/dev/null 2>&1
   [[ -n $KEY ]] && "${J[@]}" ticket delete "$KEY" -y -w -j >/dev/null 2>&1
 }
 trap cleanup EXIT
@@ -70,6 +71,21 @@ run "ticket edit -p" soft -- ticket edit "$KEY" -j -p Medium
 run "ticket edit -sp active" soft -- ticket edit "$KEY" -j -sp active
 run "ticket edit -sp none" soft -- ticket edit "$KEY" -j -sp none
 run "ticket move (list)" ok -- ticket move "$KEY" -j
+
+# Rank: a second throwaway ticket to rank against
+run "ticket create (rank target)" ok -- ticket create -j -s "Regression rank target (delete me)"
+RNK=$(jq -r '.data.key // empty' <<<"$LAST")
+if [[ -n $RNK ]]; then
+  run "ticket rank -bf" ok -- ticket rank "$KEY" -j -bf "$RNK"
+  run "ticket rank -af" ok -- ticket rank "$KEY" -j -af "$RNK"
+  run "ticket rank no target fails" fail -- ticket rank "$KEY" -j
+  run "ticket rank -bf -af fails" fail -- ticket rank "$KEY" -j -bf "$RNK" -af "$RNK"
+  run "ticket rank onto itself fails" fail -- ticket rank "$KEY" -j -bf "$KEY"
+  run "ticket rank unknown target fails" fail -- ticket rank "$KEY" -j -af "${KEY%%-*}-999999"
+  code_is "ticket rank unknown target: TICKET_NOT_FOUND" TICKET_NOT_FOUND
+  run "ticket delete (rank target)" ok -- ticket delete "$RNK" -j -y
+  [[ $(jq -r '.ok' <<<"$LAST") == true ]] && RNK=""
+fi
 
 # Comments
 run "comment add -f stdin" ok -- comment add "$KEY" -j -f - <<<"Comment from stdin"
