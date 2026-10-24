@@ -54,6 +54,17 @@ run "board view -sp all" ok -- board view -j -sp all -n 5
 run "board view -st" ok -- board view -j -st "Done" -n 5
 run "board view -sp active" soft -- board view -j -sp active -n 5
 
+# Project metadata
+run "project list -n" ok -- project list -j -n 5
+run "component list" ok -- component list -j
+run "component list -k bad project fails" fail -- component list -j -k ZZZNOPE9
+code_is "component list -k bad: PROJECT_NOT_FOUND" PROJECT_NOT_FOUND
+run "version list -k" ok -- version list -j -k "$("${J[@]}" project list -j | jq -r '.data.projects[] | select(.current) | .key')"
+run "label list -n" ok -- label list -j -n 5
+run "field list (filter)" ok -- field list -j summary
+run "ticket create -co unknown fails" fail -- ticket create -j -s "x (delete me)" -co "No such component zz"
+code_is "ticket create -co unknown: COMPONENT_NOT_FOUND" COMPONENT_NOT_FOUND
+
 # Ticket create / view / edit
 run "ticket create -s -d -t -a -l" ok -- ticket create -j -s "Regression short flags (delete me)" -d "Created by regression" -t Task -a me -l regression-short
 KEY=$(jq -r '.data.key // empty' <<<"$LAST")
@@ -69,6 +80,10 @@ run "ticket edit -f stdin" ok -- ticket edit "$KEY" -j -f - <<<"Description from
 run "ticket edit -p" soft -- ticket edit "$KEY" -j -p Medium
 run "ticket edit -sp active" soft -- ticket edit "$KEY" -j -sp active
 run "ticket edit -sp none" soft -- ticket edit "$KEY" -j -sp none
+run "ticket edit -fv unknown fails" fail -- ticket edit "$KEY" -j -fv "No such version zz"
+code_is "ticket edit -fv unknown: VERSION_NOT_FOUND" VERSION_NOT_FOUND
+# Soft: the fields may not be on the project's edit screen.
+run "ticket edit -co -fv clear" soft -- ticket edit "$KEY" -j -co "" -fv ""
 run "ticket move (list)" ok -- ticket move "$KEY" -j
 
 # Comments

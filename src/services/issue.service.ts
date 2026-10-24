@@ -7,7 +7,7 @@ export interface IssueEdit {
   update: Record<string, unknown[]>;
 }
 
-const ISSUE_DETAIL_FIELDS = `${ISSUE_LIST_FIELDS},reporter,created,labels,description,parent`;
+const ISSUE_DETAIL_FIELDS = `${ISSUE_LIST_FIELDS},reporter,created,labels,description,parent,components,fixVersions`;
 
 /** /rest/api/3/issue endpoints. */
 export class IssueService {
@@ -16,6 +16,15 @@ export class IssueService {
   get(key: string): Promise<IssueDetail> {
     const params = new URLSearchParams({ fields: ISSUE_DETAIL_FIELDS });
     return this.http.get<IssueDetail>(`${issuePath(key)}?${params}`).catch(ticketNotFound(key));
+  }
+
+  /** Key of the project the ticket is in now (a moved ticket's old key names the old project). */
+  async projectOf(key: string): Promise<string> {
+    const params = new URLSearchParams({ fields: "project" });
+    const issue = await this.http
+      .get<{ fields: { project: { key: string } } }>(`${issuePath(key)}?${params}`)
+      .catch(ticketNotFound(key));
+    return issue.fields.project.key;
   }
 
   /** POST /issue. `fields` must hold project, issuetype and summary. */

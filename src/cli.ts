@@ -2,10 +2,15 @@ import { createRequire } from "node:module";
 import { CommanderError } from "commander";
 import { registerBoard } from "./commands/board/index.js";
 import { registerComment } from "./commands/comment/index.js";
+import { registerComponent } from "./commands/component/index.js";
+import { registerField } from "./commands/field/index.js";
+import { registerLabel } from "./commands/label/index.js";
+import { registerProject } from "./commands/project/index.js";
 import { registerReport } from "./commands/report/index.js";
 import { registerSetup } from "./commands/setup.js";
 import { registerSprint } from "./commands/sprint/index.js";
 import { registerTicket } from "./commands/ticket/index.js";
+import { registerVersion } from "./commands/version/index.js";
 import { CliError } from "./core/errors.js";
 import { outputMode } from "./core/bootstrap.js";
 import { expandShortFlags, FlagCommand } from "./core/flags.js";
@@ -30,6 +35,11 @@ registerTicket(program);
 registerSprint(program);
 registerComment(program);
 registerReport(program);
+registerProject(program);
+registerComponent(program);
+registerVersion(program);
+registerLabel(program);
+registerField(program);
 
 /** 130 for Ctrl+C, 2 for bad usage or missing input, 1 for everything else. */
 function exitCode(err: unknown): number {

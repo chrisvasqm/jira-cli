@@ -14,6 +14,7 @@ import {
   type FieldOptions,
   type SprintTarget,
 } from "./fields.js";
+import { projectFieldOptions, resolveProjectFields, type ProjectFieldOptions } from "./project-fields.js";
 
 /** The ticket exists by now, so a failure here must say so: retrying create would duplicate it. */
 async function addCreated(key: string, sprint: NonNullable<SprintTarget>): Promise<void> {
@@ -26,7 +27,7 @@ async function addCreated(key: string, sprint: NonNullable<SprintTarget>): Promi
   });
 }
 
-interface CreateOptions extends FieldOptions {
+interface CreateOptions extends FieldOptions, ProjectFieldOptions {
   type: string;
   parent?: string;
   project?: string;
@@ -47,8 +48,12 @@ export function registerCreate(ticket: Command): void {
     const description = (await readDescription(opts)) || undefined;
     const { config, mode } = bootstrap(cmd);
     const sprint = opts.sprint === undefined ? undefined : await resolveSprint(opts.sprint, config.boardId);
+    const target = project ?? config.projectKey;
+    const listed = await resolveProjectFields(opts, target);
     const { edit } = await buildEdit(opts, description);
-    edit.fields["project"] = { key: project ?? config.projectKey };
+    // An empty list on create means none.
+    for (const [field, ids] of Object.entries(listed)) if (ids.length > 0) edit.fields[field] = ids;
+    edit.fields["project"] = { key: target };
     edit.fields["issuetype"] = { name: opts.type };
     if (parent) edit.fields["parent"] = { key: parent };
     const created = await new IssueService().create(edit);
@@ -62,4 +67,5 @@ export function registerCreate(ticket: Command): void {
     const where = sprint ? ` in sprint ${sprint.name}` : "";
     printResult(mode, result, () => `Created ${result.key}${where}: ${result.url}`);
   });
+  projectFieldOptions(create);
 }
