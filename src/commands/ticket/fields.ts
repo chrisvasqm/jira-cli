@@ -99,8 +99,11 @@ export async function buildEdit(
     ...(opts.removeLabel ?? []).map((label) => ({ remove: label })),
   ];
   if (labels.length > 0) update["labels"] = labels;
-  const timetracking = { originalEstimate: opts.estimate, remainingEstimate: opts.remaining };
-  if (opts.estimate !== undefined || opts.remaining !== undefined) fields["timetracking"] = timetracking;
+  // An edit operation changes only the estimate given; setting the field could reset the other one.
+  const timetracking: Record<string, string> = {};
+  if (opts.estimate !== undefined) timetracking["originalEstimate"] = opts.estimate;
+  if (opts.remaining !== undefined) timetracking["remainingEstimate"] = opts.remaining;
+  if (Object.keys(timetracking).length > 0) update["timetracking"] = [{ edit: timetracking }];
   return { edit: { fields, update }, changed: [...Object.keys(fields), ...Object.keys(update)] };
 }
 
