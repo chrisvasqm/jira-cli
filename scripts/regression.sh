@@ -6,7 +6,8 @@ set -u
 REPO=${1:?repo path}
 J=(node "$REPO/dist/index.js")
 PASS=0 FAIL=0 SOFT=0
-KEY="" SUB="" SPR=""
+KEY="" SUB="" SPR="" LNK=""
+KEY="" SUB="" SPR="" RNK=""
 
 # run <name> <expect: ok|fail|soft> -- cmd...   (soft = may fail on some boards/projects)
 run() {
@@ -35,7 +36,9 @@ code_is() {
 
 cleanup() {
   [[ -n $SPR ]] && "${J[@]}" sprint delete "$SPR" -y -j >/dev/null 2>&1
+  [[ -n $LNK ]] && "${J[@]}" ticket delete "$LNK" -y -w -j >/dev/null 2>&1
   [[ -n $SUB ]] && "${J[@]}" ticket delete "$SUB" -y -j >/dev/null 2>&1
+  [[ -n $RNK ]] && "${J[@]}" ticket delete "$RNK" -y -j >/dev/null 2>&1
   [[ -n $KEY ]] && "${J[@]}" ticket delete "$KEY" -y -w -j >/dev/null 2>&1
 }
 trap cleanup EXIT
@@ -64,11 +67,26 @@ run "label list -n" ok -- label list -j -n 5
 run "field list (filter)" ok -- field list -j summary
 run "ticket create -co unknown fails" fail -- ticket create -j -s "x (delete me)" -co "No such component zz"
 code_is "ticket create -co unknown: COMPONENT_NOT_FOUND" COMPONENT_NOT_FOUND
+# User
+run "user view (me)" ok -- user view -j
+ME_ID=$(jq -r '.data.accountId // empty' <<<"$LAST")
+ME_NAME=$(jq -r '.data.name // empty' <<<"$LAST")
+run "user view <accountId>" ok -- user view "$ME_ID" -j
+run "user search -n" ok -- user search "${ME_NAME%% *}" -j -n 5
+[[ $(jq -r '.data.users | length' <<<"$LAST") -ge 1 ]] && { PASS=$((PASS + 1)); echo "PASS user search finds me"; } || { FAIL=$((FAIL + 1)); echo "FAIL user search finds me"; }
+run "user search no match" ok -- user search zzzq-no-such-user -j
+[[ $(jq -r '.data.users | length' <<<"$LAST") == 0 ]] && { PASS=$((PASS + 1)); echo "PASS user search no match is empty"; } || { FAIL=$((FAIL + 1)); echo "FAIL user search no match is empty"; }
+run "user search -k unknown fails" fail -- user search a -j -k NOPE99
+code_is "user search -k unknown: PROJECT_NOT_FOUND" PROJECT_NOT_FOUND
+run "user search -n 0 fails" fail -- user search a -j -n 0
+run "user view unknown fails" fail -- user view zzzq-no-such-user -j
+code_is "user view unknown: USER_NOT_FOUND" USER_NOT_FOUND
 
 # Ticket create / view / edit
 run "ticket create -s -d -t -a -l" ok -- ticket create -j -s "Regression short flags (delete me)" -d "Created by regression" -t Task -a me -l regression-short
 KEY=$(jq -r '.data.key // empty' <<<"$LAST")
 [[ -z $KEY ]] && { echo "No ticket created; stopping"; exit 1; }
+run "user search -k" ok -- user search "${ME_NAME%% *}" -j -k "${KEY%%-*}"
 echo "  created $KEY"
 run "ticket create -pa (sub-task)" soft -- ticket create -j -s "Regression sub-task (delete me)" -t Subtask -pa "$KEY"
 SUB=$(jq -r '.data.key // empty' <<<"$LAST")
@@ -85,6 +103,34 @@ code_is "ticket edit -fv unknown: VERSION_NOT_FOUND" VERSION_NOT_FOUND
 # Soft: the fields may not be on the project's edit screen.
 run "ticket edit -co -fv clear" soft -- ticket edit "$KEY" -j -co "" -fv ""
 run "ticket move (list)" ok -- ticket move "$KEY" -j
+run "ticket history -n" ok -- ticket history "$KEY" -j -n 5
+run "ticket history -n 0 fails" fail -- ticket history "$KEY" -j -n 0
+
+# Ticket search and filters
+run "ticket list -n" ok -- ticket list -j -n 5
+run "ticket list -q -a -t -st -o -k" ok -- ticket list -j -q "key = $KEY" -a me -t Task -st "To Do" -o "created DESC" -k "${KEY%%-*}"
+[[ $(jq -r '.data.issues[0].key // empty' <<<"$LAST") == "$KEY" ]] && { PASS=$((PASS + 1)); echo "PASS ticket list finds $KEY"; } || { FAIL=$((FAIL + 1)); echo "FAIL ticket list finds $KEY"; }
+run "ticket list -sp none" soft -- ticket list -j -sp none -n 5
+run "ticket list -n 1001 fails" fail -- ticket list -j -n 1001
+run "ticket list -q bad JQL fails" fail -- ticket list -j -q "this is not jql ==="
+code_is "ticket list -q bad JQL: JQL_INVALID" JQL_INVALID
+run "ticket list -fi unknown fails" fail -- ticket list -j -fi "No such filter (regression)"
+code_is "ticket list -fi unknown: FILTER_NOT_FOUND" FILTER_NOT_FOUND
+run "filter list -n" ok -- filter list -j -n 5
+# Rank: a second throwaway ticket to rank against
+run "ticket create (rank target)" ok -- ticket create -j -s "Regression rank target (delete me)"
+RNK=$(jq -r '.data.key // empty' <<<"$LAST")
+if [[ -n $RNK ]]; then
+  run "ticket rank -bf" ok -- ticket rank "$KEY" -j -bf "$RNK"
+  run "ticket rank -af" ok -- ticket rank "$KEY" -j -af "$RNK"
+  run "ticket rank no target fails" fail -- ticket rank "$KEY" -j
+  run "ticket rank -bf -af fails" fail -- ticket rank "$KEY" -j -bf "$RNK" -af "$RNK"
+  run "ticket rank onto itself fails" fail -- ticket rank "$KEY" -j -bf "$KEY"
+  run "ticket rank unknown target fails" fail -- ticket rank "$KEY" -j -af "${KEY%%-*}-999999"
+  code_is "ticket rank unknown target: TICKET_NOT_FOUND" TICKET_NOT_FOUND
+  run "ticket delete (rank target)" ok -- ticket delete "$RNK" -j -y
+  [[ $(jq -r '.ok' <<<"$LAST") == true ]] && RNK=""
+fi
 
 # Comments
 run "comment add -f stdin" ok -- comment add "$KEY" -j -f - <<<"Comment from stdin"
@@ -93,6 +139,53 @@ run "comment list -n" ok -- comment list "$KEY" -j -n 10
 run "comment edit -f stdin" ok -- comment edit "$KEY" "$CID" -j -f - <<<"Edited comment"
 run "comment delete without -y fails" fail -- comment delete "$KEY" "$CID" -j </dev/null
 run "comment delete -y" ok -- comment delete "$KEY" "$CID" -j -y
+
+# Worklogs and estimates (soft: the site may have time tracking off)
+run "ticket edit -es -re" soft -- ticket edit "$KEY" -j -es 1d -re 6h
+run "ticket edit -es bad fails" fail -- ticket edit "$KEY" -j -es 2x
+run "worklog add bad duration fails" fail -- worklog add "$KEY" 0h -j
+run "worklog add -sd -d" soft -- worklog add "$KEY" 2h30m -j -sd 2026-10-20 -d "Regression worklog"
+WID=$(jq -r '.data.worklog.id // empty' <<<"$LAST")
+run "worklog add -f stdin" soft -- worklog add "$KEY" 45m -j -f - <<<"Worklog from stdin"
+run "worklog list -n" soft -- worklog list "$KEY" -j -n 10
+if [[ -n $WID ]]; then
+  run "ticket view time tracking" ok -- ticket view "$KEY" -j -n 0
+  [[ $(jq -r '.data.timeTracking.spent // empty' <<<"$LAST") == "3h 15m" ]] && { PASS=$((PASS + 1)); echo "PASS ticket view time spent"; } || { FAIL=$((FAIL + 1)); echo "FAIL ticket view time spent $(jq -c .data.timeTracking <<<"$LAST")"; }
+  run "worklog delete without -y fails" fail -- worklog delete "$KEY" "$WID" -j </dev/null
+  run "worklog delete -y" ok -- worklog delete "$KEY" "$WID" -j -y
+  run "worklog delete unknown fails" fail -- worklog delete "$KEY" 999999999 -j -y
+  code_is "worklog delete unknown: WORKLOG_NOT_FOUND" WORKLOG_NOT_FOUND
+fi
+# Links
+run "link types" ok -- link types -j
+run "ticket create (link target)" ok -- ticket create -j -s "Regression link target (delete me)"
+LNK=$(jq -r '.data.key // empty' <<<"$LAST")
+run "link add <type>" ok -- link add "$KEY" blocks "$LNK" -j
+LID=$(jq -r '.data.link.id // empty' <<<"$LAST")
+run "link add inward phrase" ok -- link add "$KEY" is blocked by "$LNK" -j
+[[ $(jq -r '.data.link.direction // empty' <<<"$LAST") == inward ]] && { PASS=$((PASS + 1)); echo "PASS link add inward direction"; } || { FAIL=$((FAIL + 1)); echo "FAIL link add inward direction"; }
+run "link add bad type fails" fail -- link add "$KEY" nope "$LNK" -j
+code_is "link add bad type: LINK_TYPE_NOT_FOUND" LINK_TYPE_NOT_FOUND
+run "link add <url> -ti" ok -- link add "$KEY" "https://example.com/regression" -ti "Regression page" -j
+WID=$(jq -r '.data.webLink.id // empty' <<<"$LAST")
+run "link list" ok -- link list "$KEY" -j
+run "link remove without -y fails" fail -- link remove "$KEY" "$LID" -j </dev/null
+code_is "link remove without -y: CONFIRM_REQUIRED" CONFIRM_REQUIRED
+run "link remove -y" ok -- link remove "$KEY" "$LID" -j -y
+run "link remove web -y" ok -- link remove "$KEY" "$WID" -j -y
+run "link remove unknown fails" fail -- link remove "$KEY" "$LID" -j -y
+code_is "link remove unknown: LINK_NOT_FOUND" LINK_NOT_FOUND
+run "ticket delete link target" ok -- ticket delete "$LNK" -j -y
+[[ $(jq -r '.ok' <<<"$LAST") == true ]] && LNK=""
+# Watchers
+run "watcher list" ok -- watcher list "$KEY" -j
+run "watcher remove (me)" ok -- watcher remove "$KEY" -j
+run "watcher remove again is a no-op" ok -- watcher remove "$KEY" me -j
+[[ $(jq -r '.data.changed' <<<"$LAST") == false ]] && { PASS=$((PASS + 1)); echo "PASS watcher remove changed:false"; } || { FAIL=$((FAIL + 1)); echo "FAIL watcher remove changed:false"; }
+run "watcher add (me)" ok -- watcher add "$KEY" -j
+run "watcher add unknown user fails" fail -- watcher add "$KEY" nobody-regression@example.invalid -j
+code_is "watcher add unknown user code" USER_NOT_FOUND
+run "watcher list bad key fails" fail -- watcher list nope -j
 
 # Reports
 run "report flow -da -n" ok -- report flow -j -da 7 -n 50

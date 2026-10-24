@@ -42,6 +42,7 @@ interface IssueDetailFields extends IssueFields {
   parent?: { key: string; fields?: { summary?: string } } | null;
   components?: { name: string }[];
   fixVersions?: { name: string }[];
+  timetracking?: { originalEstimate?: string; remainingEstimate?: string; timeSpent?: string };
 }
 
 export interface IssueDetail extends Issue {

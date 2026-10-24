@@ -6,11 +6,16 @@ import { registerComponent } from "./commands/component/index.js";
 import { registerField } from "./commands/field/index.js";
 import { registerLabel } from "./commands/label/index.js";
 import { registerProject } from "./commands/project/index.js";
+import { registerFilter } from "./commands/filter/index.js";
+import { registerLink } from "./commands/link/index.js";
 import { registerReport } from "./commands/report/index.js";
 import { registerSetup } from "./commands/setup.js";
 import { registerSprint } from "./commands/sprint/index.js";
 import { registerTicket } from "./commands/ticket/index.js";
 import { registerVersion } from "./commands/version/index.js";
+import { registerUser } from "./commands/user/index.js";
+import { registerWorklog } from "./commands/worklog/index.js";
+import { registerWatcher } from "./commands/watcher/index.js";
 import { CliError } from "./core/errors.js";
 import { outputMode } from "./core/bootstrap.js";
 import { expandShortFlags, FlagCommand } from "./core/flags.js";
@@ -34,12 +39,17 @@ registerBoard(program);
 registerTicket(program);
 registerSprint(program);
 registerComment(program);
+registerFilter(program);
+registerWorklog(program);
+registerLink(program);
+registerWatcher(program);
 registerReport(program);
 registerProject(program);
 registerComponent(program);
 registerVersion(program);
 registerLabel(program);
 registerField(program);
+registerUser(program);
 
 /** 130 for Ctrl+C, 2 for bad usage or missing input, 1 for everything else. */
 function exitCode(err: unknown): number {

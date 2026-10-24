@@ -72,37 +72,54 @@ The agent adds `--json` to each command, so it reads exact data and stable error
 
 ## Commands
 
-| Command                               | What it does                                                               |
-| ------------------------------------- | -------------------------------------------------------------------------- |
-| `jira board [view [id]]`              | Tickets on a board (default: yours), grouped by column                     |
-| `jira board list`                     | Boards you can see; `*` marks yours                                        |
-| `jira board use <id>`                 | Make a board and its project the default                                   |
-| `jira ticket view <KEY>`              | Fields, description and latest comments (`-n, --comments <0-100>`, 5)      |
-| `jira ticket create`                  | New ticket (`-s, --summary` is required)                                   |
-| `jira ticket edit <KEY>`              | Change only the fields you pass                                            |
-| `jira ticket move <KEY> [target]`     | Change the status; with no target, list the allowed moves                  |
-| `jira ticket delete <KEY>`            | Delete a ticket (`-w, --with-subtasks` also deletes sub-tasks)             |
-| `jira comment list <KEY>`             | All comments, oldest first (`-n, --limit <n>`, 50)                         |
-| `jira comment add <KEY> [text]`       | Add a comment                                                              |
-| `jira comment edit <KEY> <id> [text]` | Replace a comment's text                                                   |
-| `jira comment delete <KEY> <id>`      | Delete a comment                                                           |
-| `jira sprint list`                    | A board's sprints (`-se, --state open\|active\|future\|closed\|all`, open) |
-| `jira sprint view [id]`               | A sprint (default: the active sprint; `SPRINT_AMBIGUOUS` if several)       |
-| `jira sprint create`                  | New future sprint (`-na, --name` is required, at most 30 characters)       |
-| `jira sprint edit <id>`               | Change only the fields you pass                                            |
-| `jira sprint start <id>`              | Start a future sprint (default: now, for two weeks)                        |
-| `jira sprint close <id>`              | Close the active sprint; unfinished tickets go back to the backlog         |
-| `jira sprint delete <id>`             | Delete a sprint; its tickets go back to the backlog                        |
-| `jira report flow`                    | Throughput per week, cycle and lead time, oldest open tickets              |
-| `jira report workload`                | Open tickets per person and status                                         |
-| `jira report sprint [id]`             | A sprint's done and not-done tickets (default: active, else last closed)   |
-| `jira report velocity`                | Tickets and points done per closed sprint (`-n, --sprints <n>`, 6)         |
+| Command                               | What it does                                                                  |
+| ------------------------------------- | ----------------------------------------------------------------------------- |
+| `jira board [view [id]]`              | Tickets on a board (default: yours), grouped by column                        |
+| `jira board list`                     | Boards you can see; `*` marks yours                                           |
+| `jira board use <id>`                 | Make a board and its project the default                                      |
+| `jira ticket list`                    | Search tickets (default: not done in your project, latest updated first)      |
+| `jira filter list`                    | Saved filters you own or marked as favourite (`-n, --limit <n>`, 50)          |
+| `jira ticket view <KEY>`              | Fields, description and latest comments (`-n, --comments <0-100>`, 5)         |
+| `jira ticket create`                  | New ticket (`-s, --summary` is required)                                      |
+| `jira ticket edit <KEY>`              | Change only the fields you pass                                               |
+| `jira ticket move <KEY> [target]`     | Change the status; with no target, list the allowed moves                     |
+| `jira ticket history <KEY>`           | Change history, newest first: who changed which field (`-n, --limit <n>`, 20) |
+| `jira ticket rank <KEY...>`           | Backlog order: put tickets before (`-bf`) or after (`-af`) another ticket     |
+| `jira ticket delete <KEY>`            | Delete a ticket (`-w, --with-subtasks` also deletes sub-tasks)                |
+| `jira comment list <KEY>`             | All comments, oldest first (`-n, --limit <n>`, 50)                            |
+| `jira comment add <KEY> [text]`       | Add a comment                                                                 |
+| `jira comment edit <KEY> <id> [text]` | Replace a comment's text                                                      |
+| `jira comment delete <KEY> <id>`      | Delete a comment                                                              |
+| `jira worklog list <KEY>`             | Time logged on a ticket (`-n, --limit <n>`, 50)                               |
+| `jira worklog add <KEY> <duration>`   | Log time, e.g. `2h30m`, `1d`, `45m`                                           |
+| `jira worklog delete <KEY> <id>`      | Delete a worklog                                                              |
+| `jira link list <KEY>`                | Issue links and web links                                                     |
+| `jira link add <KEY> <type> <OTHER>`  | Link two tickets, e.g. `KAN-1 blocks KAN-2` or `KAN-1 is blocked by KAN-2`    |
+| `jira link add <KEY> <url>`           | Add a web link (`-ti, --title <text>`, default: the URL)                      |
+| `jira link remove <KEY> <id>`         | Remove an issue link (`10001`) or a web link (`w10000`)                       |
+| `jira link types`                     | Issue link types: name, outward and inward phrase                             |
+| `jira watcher list <KEY>`             | Who watches a ticket, the count, and whether you do                           |
+| `jira watcher add <KEY> [user]`       | Watch a ticket, or add a watcher (default: me)                                |
+| `jira watcher remove <KEY> [user]`    | Stop watching, or remove a watcher (default: me)                              |
+| `jira sprint list`                    | A board's sprints (`-se, --state open\|active\|future\|closed\|all`, open)    |
+| `jira sprint view [id]`               | A sprint (default: the active sprint; `SPRINT_AMBIGUOUS` if several)          |
+| `jira sprint create`                  | New future sprint (`-na, --name` is required, at most 30 characters)          |
+| `jira sprint edit <id>`               | Change only the fields you pass                                               |
+| `jira sprint start <id>`              | Start a future sprint (default: now, for two weeks)                           |
+| `jira sprint close <id>`              | Close the active sprint; unfinished tickets go back to the backlog            |
+| `jira sprint delete <id>`             | Delete a sprint; its tickets go back to the backlog                           |
+| `jira report flow`                    | Throughput per week, cycle and lead time, oldest open tickets                 |
+| `jira report workload`                | Open tickets per person and status                                            |
+| `jira report sprint [id]`             | A sprint's done and not-done tickets (default: active, else last closed)      |
+| `jira report velocity`                | Tickets and points done per closed sprint (`-n, --sprints <n>`, 6)            |
 | `jira project list`                   | Projects you can see; `*` marks yours (`-n, --limit <n>`, 50)              |
 | `jira component list`                 | A project's components (`-k, --project <KEY>`)                             |
 | `jira version list`                   | A project's versions, unreleased first (`-k, --project <KEY>`)             |
 | `jira label list`                     | Labels used on the site (`-n, --limit <n>`, 1000)                          |
 | `jira field list [text]`              | Fields and their ids; `text` filters names (any case)                      |
-| `jira setup`                          | Create the config (see [Set up](#set-up))                                  |
+| `jira user search <text>`             | People whose name or email starts with the text (`-n, --limit <n>`, 20)       |
+| `jira user view [who]`                | A user: `me` (default), an email, a name or an accountId                      |
+| `jira setup`                          | Create the config (see [Set up](#set-up))                                     |
 
 - **Board filters:**
   - `-st, --status <column or status>`
@@ -114,6 +131,19 @@ The agent adds `--json` to each command, so it reads exact data and stable error
 
   Sprint boards show the active sprints by default.
 
+- **Ticket search (`ticket list`):**
+  - `-k, --project <KEY>` (default: your project)
+  - `-q, --jql <extra JQL>`, joined with AND. Without `-q`, done tickets are left out.
+  - `-a, --assignee me|none|<email, name or accountId>`
+  - `-st, --status <name>`
+  - `-t, --type <name>`
+  - `-sp, --sprint active|<id>|<name>|none`: a sprint of the configured board, or tickets in no sprint
+  - `-fi, --filter <id or name>`: start from a saved filter instead of your project (add `-k` to keep a project too)
+  - `-o, --order-by <JQL>` (default `updated DESC`)
+  - `-n, --limit <n>` (default 50, at most 1000)
+
+  Jira rejects bad JQL with `JQL_INVALID`.
+
 - **Ticket fields (`create` and `edit`):**
   - `-s, --summary`
   - `-d, --description <text>`, or `-f, --description-file <path>` (`-` reads stdin). On `edit`, `--description ""` clears the description.
@@ -122,16 +152,23 @@ The agent adds `--json` to each command, so it reads exact data and stable error
   - `-l, --add-label` (repeatable)
   - `-sp, --sprint active|<id>|<name>|none`: put the ticket in a sprint of the configured board, or back in the backlog with `none`
   - `-co, --component <names>` and `-fv, --fix-version <names>`: comma-separated names of the project's components or versions (see `jira component list`, `jira version list`). Each sets the whole list; on `edit`, `""` clears it.
+  - `-es, --estimate <duration>` and `-re, --remaining <duration>`: original and remaining estimate, e.g. `2h30m` or `1d`. `TIME_TRACKING_DISABLED` when the site has time tracking off.
   - `create` also takes `-t, --type` (default Task), `-pa, --parent <KEY>` and `-k, --project <KEY>`.
   - `edit` also takes `-rl, --remove-label`.
 - **Sprint fields (`create`, `edit`, `start`):** `-na, --name`, `-go, --goal` (`""` clears it on `edit`), `-sd, --start <date>`, `-e, --end <date>` (`2026-10-24` or an ISO timestamp). `list`, `view` and `create` take `-b, --board <id>`; `close` and `delete` ask first (`-y, --yes`). The board must use sprints (`NO_SPRINTS` otherwise).
 - **Reports** use the configured board, or `-b, --board <id>`. `flow` looks back `-da, --days <n>` (30); `flow` and `workload` take `-n, --limit <n>`. Cycle time runs from the first "in progress" status to done; lead time from created to done.
 - **Project metadata:** `component list` and `version list` use the configured project, or `-k, --project <KEY>`. Use `field list` to find a custom field id, e.g. `jira field list points`.
+- **Users:** `user search` takes `-k, --project <KEY>` to list only people who can be assigned tickets in that project. No match prints an empty list. `user view` shows the account id, email (when the profile shows it), time zone and status; a name that matches several people fails with `USER_AMBIGUOUS`.
 - **Move targets:** a status name, a transition name or id, or a board column. Case does not matter.
+- **History:** each entry shows who changed what and when, one `field: from → to` line per field. Long values are cut to 60 characters; `--json` keeps them whole, with `null` for an empty value.
+- **Rank:** `jira ticket rank KAN-5 KAN-6 -bf KAN-2` puts KAN-5, then KAN-6, right before KAN-2; `-af, --after <KEY>` puts them right after. Pass exactly one of `-bf, --before` and `-af, --after`, at most 50 tickets. If Jira ranks only some of them, the command fails with `RANK_FAILED` and lists each failed ticket.
 - **Comment text:** pass it inline, or use `-f, --file <path>` (`-` reads stdin).
   - A blank line starts a new paragraph.
   - A single newline is a line break.
   - Lines between ` ``` ` fences become a code block.
+- **Worklogs:** a duration is weeks, days, hours and minutes (`1w`, `1d`, `2h30m`, `45m`). `add` takes `-sd, --start <date>` (default now) and a note with `-d, --description <text>` or `-f, --file <path>` (`-` reads stdin). Logging time lowers the remaining estimate. `ticket view` shows time spent, remaining and the estimate. With time tracking off, worklog commands fail with `TIME_TRACKING_DISABLED`; an unknown worklog id gives `WORKLOG_NOT_FOUND`.
+- **Links:** `<type>` is a link type's name, outward or inward phrase from `jira link types`, case-insensitive; quotes are optional (`is blocked by`). An inward phrase links the other way: `jira link add KAN-1 is blocked by KAN-2` means KAN-2 blocks KAN-1. Web link ids start with `w`, so `link remove` knows which kind to remove. `remove` asks first (`-y, --yes`).
+- **Watchers:** `[user]` is `me`, an email, a name or an accountId. `add` and `remove` are idempotent: adding a watcher who already watches, or removing one who does not, succeeds with `changed: false` and a `note`. `remove` does not ask first. `WATCHING_DISABLED` means the site turned watching off.
 - **Deletes** ask you to type "yes". `--yes` (`-y`) skips the question. With no terminal (scripts, agents), a delete without `--yes` fails with `CONFIRM_REQUIRED`.
 
 Every option has a short form, shown above. Short flags are lowercase, and some have two letters (`-st`, `-sp`), so write them apart: `-y -j`, not `-yj`. Run `jira <command> --help` for every option.
