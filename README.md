@@ -90,10 +90,10 @@ The agent adds `--json` to each command, so it reads exact data and stable error
 | `jira comment add <KEY> [text]`       | Add a comment                                                                 |
 | `jira comment edit <KEY> <id> [text]` | Replace a comment's text                                                      |
 | `jira comment delete <KEY> <id>`      | Delete a comment                                                              |
-| `jira attachment list <KEY>`          | A ticket's attachments: id, filename, size, type, author, created           |
-| `jira attachment add <KEY> <file...>` | Upload one or more files                                                    |
-| `jira attachment get <KEY> <id>`      | Download an attachment (`-ou, --output <path>`, default: its filename here) |
-| `jira attachment delete <KEY> <id>`   | Delete an attachment                                                        |
+| `jira attachment list <KEY>`          | A ticket's attachments: id, filename, size, type, author, created             |
+| `jira attachment add <KEY> <file...>` | Upload one or more files                                                      |
+| `jira attachment get <KEY> <id>`      | Download an attachment (`-ou, --output <path>`, default: its filename here)   |
+| `jira attachment delete <KEY> <id>`   | Delete an attachment                                                          |
 | `jira worklog list <KEY>`             | Time logged on a ticket (`-n, --limit <n>`, 50)                               |
 | `jira worklog add <KEY> <duration>`   | Log time, e.g. `2h30m`, `1d`, `45m`                                           |
 | `jira worklog delete <KEY> <id>`      | Delete a worklog                                                              |
