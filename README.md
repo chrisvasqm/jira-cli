@@ -41,6 +41,35 @@ The CLI looks for a config in this order:
 2. the nearest `.jira-cli.json`, walking up from the current directory;
 3. the global file.
 
+## Use it with an agent
+
+With the skill installed, ask in plain words and the agent runs the commands. Some examples:
+
+- **Your day**
+  - "What's on my plate today?" → `jira board -a me -S active`
+  - "Catch me up on KAN-42." → `jira ticket view KAN-42 -n 20`, then a summary of the ticket, the discussion and what blocks it
+  - "I'm starting KAN-42." → `jira ticket edit KAN-42 -a me` and `jira ticket move KAN-42 "In Progress"`
+  - "Done with KAN-42, the fix is in PR #88." → `jira comment add KAN-42 "…"` and `jira ticket move KAN-42 Done`
+- **While coding**
+  - "Read KAN-57 and implement it." → the agent reads the ticket, writes the code, opens the PR, comments the link and moves the ticket to review.
+  - "File a bug for the date parser problem we just found." → `jira ticket create -t Bug -s "…" -f - -p High -l parser`, with repro steps from the code
+  - "Split KAN-60 into sub-tasks that match this plan." → one `jira ticket create -P KAN-60 -t Subtask -s "…"` per step
+  - "Put this stack trace on KAN-61." → `jira comment add KAN-61 -f -`, kept as a code block
+- **Triage**
+  - "Which To Do tickets have no assignee? Give me the backend ones." → `jira board -a none -s "To Do"`, then `jira ticket edit … -a me`
+  - "Put every `urgent` ticket in the active sprint." → `jira board -q 'labels = urgent'`, then `jira ticket edit … -S active`
+  - "Rewrite KAN-70's description as acceptance criteria." → `jira ticket view KAN-70`, then `jira ticket edit KAN-70 -f -`
+  - "Delete the tickets I made for the demo." → the agent lists them, waits for your OK, then runs `jira ticket delete … -y`
+- **Standups and sprints**
+  - "Write my standup." → your board and recent comments, turned into yesterday, today and blockers
+  - "How is the sprint going?" → `jira report sprint` and `jira report workload`: what is at risk and who is overloaded
+  - "Are we getting faster?" → `jira report velocity -s 8` and `jira report flow -d 90`: trends and the oldest stuck tickets
+- **With [testrail-cli](https://github.com/chrisvasqm/testrail-cli)**
+  - "Write test cases for KAN-80." → the agent reads the acceptance criteria and creates cases linked to KAN-80.
+  - "T45 failed. File a bug." → `testrail result add T45 --status failed --comment "…" --create-bug`
+
+The agent adds `--json` to each command, so it reads exact data and stable error codes instead of screen text.
+
 ## Commands
 
 | Command                               | What it does                                                          |
