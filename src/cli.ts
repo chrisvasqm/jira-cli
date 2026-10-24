@@ -2,6 +2,7 @@ import { createRequire } from "node:module";
 import { CommanderError } from "commander";
 import { registerBoard } from "./commands/board/index.js";
 import { registerComment } from "./commands/comment/index.js";
+import { registerLink } from "./commands/link/index.js";
 import { registerReport } from "./commands/report/index.js";
 import { registerSetup } from "./commands/setup.js";
 import { registerSprint } from "./commands/sprint/index.js";
@@ -30,6 +31,7 @@ registerBoard(program);
 registerTicket(program);
 registerSprint(program);
 registerComment(program);
+registerLink(program);
 registerWatcher(program);
 registerReport(program);
 

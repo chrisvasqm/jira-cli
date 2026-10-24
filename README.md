@@ -87,6 +87,11 @@ The agent adds `--json` to each command, so it reads exact data and stable error
 | `jira comment add <KEY> [text]`       | Add a comment                                                              |
 | `jira comment edit <KEY> <id> [text]` | Replace a comment's text                                                   |
 | `jira comment delete <KEY> <id>`      | Delete a comment                                                           |
+| `jira link list <KEY>`                | Issue links and web links                                                  |
+| `jira link add <KEY> <type> <OTHER>`  | Link two tickets, e.g. `KAN-1 blocks KAN-2` or `KAN-1 is blocked by KAN-2` |
+| `jira link add <KEY> <url>`           | Add a web link (`-ti, --title <text>`, default: the URL)                   |
+| `jira link remove <KEY> <id>`         | Remove an issue link (`10001`) or a web link (`w10000`)                    |
+| `jira link types`                     | Issue link types: name, outward and inward phrase                          |
 | `jira watcher list <KEY>`             | Who watches a ticket, the count, and whether you do                        |
 | `jira watcher add <KEY> [user]`       | Watch a ticket, or add a watcher (default: me)                             |
 | `jira watcher remove <KEY> [user]`    | Stop watching, or remove a watcher (default: me)                           |
@@ -130,6 +135,7 @@ The agent adds `--json` to each command, so it reads exact data and stable error
   - A blank line starts a new paragraph.
   - A single newline is a line break.
   - Lines between ` ``` ` fences become a code block.
+- **Links:** `<type>` is a link type's name, outward or inward phrase from `jira link types`, case-insensitive; quotes are optional (`is blocked by`). An inward phrase links the other way: `jira link add KAN-1 is blocked by KAN-2` means KAN-2 blocks KAN-1. Web link ids start with `w`, so `link remove` knows which kind to remove. `remove` asks first (`-y, --yes`).
 - **Watchers:** `[user]` is `me`, an email, a name or an accountId. `add` and `remove` are idempotent: adding a watcher who already watches, or removing one who does not, succeeds with `changed: false` and a `note`. `remove` does not ask first. `WATCHING_DISABLED` means the site turned watching off.
 - **Deletes** ask you to type "yes". `--yes` (`-y`) skips the question. With no terminal (scripts, agents), a delete without `--yes` fails with `CONFIRM_REQUIRED`.
 
