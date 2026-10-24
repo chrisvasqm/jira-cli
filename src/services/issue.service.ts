@@ -32,4 +32,12 @@ export class IssueService {
       .put<undefined>(`/rest/api/3/issue/${encodeURIComponent(key)}`, edit)
       .catch(ticketNotFound(key));
   }
+
+  /** DELETE /issue/{key}. Jira refuses when the ticket has sub-tasks unless `withSubtasks`. */
+  async remove(key: string, withSubtasks: boolean): Promise<void> {
+    const params = new URLSearchParams({ deleteSubtasks: String(withSubtasks) });
+    await this.http
+      .delete<undefined>(`/rest/api/3/issue/${encodeURIComponent(key)}?${params}`)
+      .catch(ticketNotFound(key));
+  }
 }
