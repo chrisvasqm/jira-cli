@@ -86,6 +86,9 @@ The agent adds `--json` to each command, so it reads exact data and stable error
 | `jira comment add <KEY> [text]`       | Add a comment                                                              |
 | `jira comment edit <KEY> <id> [text]` | Replace a comment's text                                                   |
 | `jira comment delete <KEY> <id>`      | Delete a comment                                                           |
+| `jira watcher list <KEY>`             | Who watches a ticket, the count, and whether you do                        |
+| `jira watcher add <KEY> [user]`       | Watch a ticket, or add a watcher (default: me)                             |
+| `jira watcher remove <KEY> [user]`    | Stop watching, or remove a watcher (default: me)                           |
 | `jira sprint list`                    | A board's sprints (`-se, --state open\|active\|future\|closed\|all`, open) |
 | `jira sprint view [id]`               | A sprint (default: the active sprint; `SPRINT_AMBIGUOUS` if several)       |
 | `jira sprint create`                  | New future sprint (`-na, --name` is required, at most 30 characters)       |
@@ -125,6 +128,7 @@ The agent adds `--json` to each command, so it reads exact data and stable error
   - A blank line starts a new paragraph.
   - A single newline is a line break.
   - Lines between ` ``` ` fences become a code block.
+- **Watchers:** `[user]` is `me`, an email, a name or an accountId. `add` and `remove` are idempotent: adding a watcher who already watches, or removing one who does not, succeeds with `changed: false` and a `note`. `remove` does not ask first. `WATCHING_DISABLED` means the site turned watching off.
 - **Deletes** ask you to type "yes". `--yes` (`-y`) skips the question. With no terminal (scripts, agents), a delete without `--yes` fails with `CONFIRM_REQUIRED`.
 
 Every option has a short form, shown above. Short flags are lowercase, and some have two letters (`-st`, `-sp`), so write them apart: `-y -j`, not `-yj`. Run `jira <command> --help` for every option.
