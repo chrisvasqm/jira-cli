@@ -81,6 +81,7 @@ The agent adds `--json` to each command, so it reads exact data and stable error
 | `jira ticket create`                  | New ticket (`-s, --summary` is required)                                   |
 | `jira ticket edit <KEY>`              | Change only the fields you pass                                            |
 | `jira ticket move <KEY> [target]`     | Change the status; with no target, list the allowed moves                  |
+| `jira ticket rank <KEY...>`           | Backlog order: put tickets before (`-bf`) or after (`-af`) another ticket  |
 | `jira ticket delete <KEY>`            | Delete a ticket (`-w, --with-subtasks` also deletes sub-tasks)             |
 | `jira comment list <KEY>`             | All comments, oldest first (`-n, --limit <n>`, 50)                         |
 | `jira comment add <KEY> [text]`       | Add a comment                                                              |
@@ -124,6 +125,7 @@ The agent adds `--json` to each command, so it reads exact data and stable error
 - **Sprint fields (`create`, `edit`, `start`):** `-na, --name`, `-go, --goal` (`""` clears it on `edit`), `-sd, --start <date>`, `-e, --end <date>` (`2026-10-24` or an ISO timestamp). `list`, `view` and `create` take `-b, --board <id>`; `close` and `delete` ask first (`-y, --yes`). The board must use sprints (`NO_SPRINTS` otherwise).
 - **Reports** use the configured board, or `-b, --board <id>`. `flow` looks back `-da, --days <n>` (30); `flow` and `workload` take `-n, --limit <n>`. Cycle time runs from the first "in progress" status to done; lead time from created to done.
 - **Move targets:** a status name, a transition name or id, or a board column. Case does not matter.
+- **Rank:** `jira ticket rank KAN-5 KAN-6 -bf KAN-2` puts KAN-5, then KAN-6, right before KAN-2; `-af, --after <KEY>` puts them right after. Pass exactly one of `-bf, --before` and `-af, --after`, at most 50 tickets. If Jira ranks only some of them, the command fails with `RANK_FAILED` and lists each failed ticket.
 - **Comment text:** pass it inline, or use `-f, --file <path>` (`-` reads stdin).
   - A blank line starts a new paragraph.
   - A single newline is a line break.
