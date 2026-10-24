@@ -6,7 +6,7 @@ set -u
 REPO=${1:?repo path}
 J=(node "$REPO/dist/index.js")
 PASS=0 FAIL=0 SOFT=0
-KEY="" SUB="" SPR=""
+KEY="" SUB="" SPR="" LNK=""
 
 # run <name> <expect: ok|fail|soft> -- cmd...   (soft = may fail on some boards/projects)
 run() {
@@ -35,6 +35,7 @@ code_is() {
 
 cleanup() {
   [[ -n $SPR ]] && "${J[@]}" sprint delete "$SPR" -y -j >/dev/null 2>&1
+  [[ -n $LNK ]] && "${J[@]}" ticket delete "$LNK" -y -w -j >/dev/null 2>&1
   [[ -n $SUB ]] && "${J[@]}" ticket delete "$SUB" -y -j >/dev/null 2>&1
   [[ -n $KEY ]] && "${J[@]}" ticket delete "$KEY" -y -w -j >/dev/null 2>&1
 }
@@ -78,6 +79,28 @@ run "comment list -n" ok -- comment list "$KEY" -j -n 10
 run "comment edit -f stdin" ok -- comment edit "$KEY" "$CID" -j -f - <<<"Edited comment"
 run "comment delete without -y fails" fail -- comment delete "$KEY" "$CID" -j </dev/null
 run "comment delete -y" ok -- comment delete "$KEY" "$CID" -j -y
+
+# Links
+run "link types" ok -- link types -j
+run "ticket create (link target)" ok -- ticket create -j -s "Regression link target (delete me)"
+LNK=$(jq -r '.data.key // empty' <<<"$LAST")
+run "link add <type>" ok -- link add "$KEY" blocks "$LNK" -j
+LID=$(jq -r '.data.link.id // empty' <<<"$LAST")
+run "link add inward phrase" ok -- link add "$KEY" is blocked by "$LNK" -j
+[[ $(jq -r '.data.link.direction // empty' <<<"$LAST") == inward ]] && { PASS=$((PASS + 1)); echo "PASS link add inward direction"; } || { FAIL=$((FAIL + 1)); echo "FAIL link add inward direction"; }
+run "link add bad type fails" fail -- link add "$KEY" nope "$LNK" -j
+code_is "link add bad type: LINK_TYPE_NOT_FOUND" LINK_TYPE_NOT_FOUND
+run "link add <url> -ti" ok -- link add "$KEY" "https://example.com/regression" -ti "Regression page" -j
+WID=$(jq -r '.data.webLink.id // empty' <<<"$LAST")
+run "link list" ok -- link list "$KEY" -j
+run "link remove without -y fails" fail -- link remove "$KEY" "$LID" -j </dev/null
+code_is "link remove without -y: CONFIRM_REQUIRED" CONFIRM_REQUIRED
+run "link remove -y" ok -- link remove "$KEY" "$LID" -j -y
+run "link remove web -y" ok -- link remove "$KEY" "$WID" -j -y
+run "link remove unknown fails" fail -- link remove "$KEY" "$LID" -j -y
+code_is "link remove unknown: LINK_NOT_FOUND" LINK_NOT_FOUND
+run "ticket delete link target" ok -- ticket delete "$LNK" -j -y
+[[ $(jq -r '.ok' <<<"$LAST") == true ]] && LNK=""
 
 # Reports
 run "report flow -da -n" ok -- report flow -j -da 7 -n 50

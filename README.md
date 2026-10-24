@@ -86,6 +86,11 @@ The agent adds `--json` to each command, so it reads exact data and stable error
 | `jira comment add <KEY> [text]`       | Add a comment                                                              |
 | `jira comment edit <KEY> <id> [text]` | Replace a comment's text                                                   |
 | `jira comment delete <KEY> <id>`      | Delete a comment                                                           |
+| `jira link list <KEY>`                | Issue links and web links                                                  |
+| `jira link add <KEY> <type> <OTHER>`  | Link two tickets, e.g. `KAN-1 blocks KAN-2` or `KAN-1 is blocked by KAN-2` |
+| `jira link add <KEY> <url>`           | Add a web link (`-ti, --title <text>`, default: the URL)                   |
+| `jira link remove <KEY> <id>`         | Remove an issue link (`10001`) or a web link (`w10000`)                    |
+| `jira link types`                     | Issue link types: name, outward and inward phrase                          |
 | `jira sprint list`                    | A board's sprints (`-se, --state open\|active\|future\|closed\|all`, open) |
 | `jira sprint view [id]`               | A sprint (default: the active sprint; `SPRINT_AMBIGUOUS` if several)       |
 | `jira sprint create`                  | New future sprint (`-na, --name` is required, at most 30 characters)       |
@@ -125,6 +130,7 @@ The agent adds `--json` to each command, so it reads exact data and stable error
   - A blank line starts a new paragraph.
   - A single newline is a line break.
   - Lines between ` ``` ` fences become a code block.
+- **Links:** `<type>` is a link type's name, outward or inward phrase from `jira link types`, case-insensitive; quotes are optional (`is blocked by`). An inward phrase links the other way: `jira link add KAN-1 is blocked by KAN-2` means KAN-2 blocks KAN-1. Web link ids start with `w`, so `link remove` knows which kind to remove. `remove` asks first (`-y, --yes`).
 - **Deletes** ask you to type "yes". `--yes` (`-y`) skips the question. With no terminal (scripts, agents), a delete without `--yes` fails with `CONFIRM_REQUIRED`.
 
 Every option has a short form, shown above. Short flags are lowercase, and some have two letters (`-st`, `-sp`), so write them apart: `-y -j`, not `-yj`. Run `jira <command> --help` for every option.
