@@ -95,6 +95,16 @@ run "comment edit -f stdin" ok -- comment edit "$KEY" "$CID" -j -f - <<<"Edited 
 run "comment delete without -y fails" fail -- comment delete "$KEY" "$CID" -j </dev/null
 run "comment delete -y" ok -- comment delete "$KEY" "$CID" -j -y
 
+# Watchers
+run "watcher list" ok -- watcher list "$KEY" -j
+run "watcher remove (me)" ok -- watcher remove "$KEY" -j
+run "watcher remove again is a no-op" ok -- watcher remove "$KEY" me -j
+[[ $(jq -r '.data.changed' <<<"$LAST") == false ]] && { PASS=$((PASS + 1)); echo "PASS watcher remove changed:false"; } || { FAIL=$((FAIL + 1)); echo "FAIL watcher remove changed:false"; }
+run "watcher add (me)" ok -- watcher add "$KEY" -j
+run "watcher add unknown user fails" fail -- watcher add "$KEY" nobody-regression@example.invalid -j
+code_is "watcher add unknown user code" USER_NOT_FOUND
+run "watcher list bad key fails" fail -- watcher list nope -j
+
 # Reports
 run "report flow -da -n" ok -- report flow -j -da 7 -n 50
 run "report workload -n" ok -- report workload -j -n 50
