@@ -52,7 +52,7 @@ if tagged=$(git rev-parse -q --verify "refs/tags/$tag^{commit}"); then
   [ "$tagged" = "$head" ] || die "$tag exists on another commit; bump the version in the PR first"
 fi
 
-# Release state: none, complete (asset present), or partial (asset missing).
+# Release state: none, complete (asset present), partial (asset missing), or draft (left by a failed run).
 state=none
 if lookup=$(gh api "repos/{owner}/{repo}/releases/tags/$tag" --jq '[.assets[].name] | join(" ")' 2>&1); then
   case " $lookup " in
@@ -61,7 +61,11 @@ if lookup=$(gh api "repos/{owner}/{repo}/releases/tags/$tag" --jq '[.assets[].na
   esac
 else
   case "$lookup" in
-    *"HTTP 404"*) ;;
+    *"HTTP 404"*)
+      # releases/tags/{tag} never returns drafts, so look for one by listing.
+      draft=$(gh release list --limit 100 --json tagName,isDraft --jq ".[] | select(.isDraft and .tagName == \"$tag\") | .tagName")
+      [ -z "$draft" ] || state=draft
+      ;;
     *) die "could not check release $tag: $lookup" ;;
   esac
 fi
@@ -86,13 +90,17 @@ asset="$out/$asset_name"
 # Same file under a fixed name, so releases/latest/download/jira-cli.tgz always installs the newest version.
 stable="$out/jira-cli.tgz"
 cp "$asset" "$stable"
+# Checksum of the stable asset, which install.sh verifies before installing.
+checksum="$out/jira-cli.tgz.sha256"
+(cd "$out" && shasum -a 256 jira-cli.tgz >"$checksum")
+printf '\nSHA-256 of `%s`: `%s`\n' "$asset_name" "$(cut -d' ' -f1 "$checksum")" >>"$notes"
 
 git rev-parse -q --verify "refs/tags/$tag" >/dev/null || git tag -a "$tag" -m "jira-cli $tag"
 git push -q origin "$tag"
-if [ "$state" = partial ]; then
-  gh release upload "$tag" "$asset" "$stable" --clobber
-  gh release edit "$tag" --notes-file "$notes" >/dev/null
-  echo "uploaded missing $asset_name and refreshed the notes of existing release $tag"
+if [ "$state" != none ]; then
+  gh release upload "$tag" "$asset" "$stable" "$checksum" --clobber
+  gh release edit "$tag" --notes-file "$notes" --draft=false >/dev/null
+  echo "uploaded the assets and refreshed the notes of existing $state release $tag"
 else
-  gh release create "$tag" "$asset" "$stable" --verify-tag --title "jira-cli $tag" --notes-file "$notes"
+  gh release create "$tag" "$asset" "$stable" "$checksum" --verify-tag --title "jira-cli $tag" --notes-file "$notes"
 fi
