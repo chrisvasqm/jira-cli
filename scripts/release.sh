@@ -55,6 +55,11 @@ listing=$(tar -tzf "$tarball")
 unexpected=$(grep -vE '^package/(package\.json|README\.md|LICEN[CS]E(\.md)?|dist/.+\.(js|d\.ts|js\.map))$' <<<"$listing" || true)
 [ -z "$unexpected" ] || die "tarball has unexpected files: $unexpected"
 grep -qx 'package/dist/index.js' <<<"$listing" || die "tarball is missing dist/index.js"
+# dist/index.js is bundled, so the package must not ask npm to resolve anything at install time.
+tar -xzOf "$tarball" package/package.json | node -e '
+  const pkg = JSON.parse(require("node:fs").readFileSync(0, "utf8"));
+  if (Object.keys(pkg.dependencies ?? {}).length) process.exit(1);
+' || die "package.json has runtime dependencies; dist/index.js must bundle them"
 asset="$out/$asset_name"
 [ "$tarball" = "$asset" ] || mv "$tarball" "$asset"
 
@@ -62,7 +67,8 @@ git rev-parse -q --verify "refs/tags/$tag" >/dev/null || git tag -a "$tag" -m "j
 git push -q origin "$tag"
 if [ "$state" = partial ]; then
   gh release upload "$tag" "$asset" --clobber
-  echo "uploaded missing $asset_name to existing release $tag"
+  gh release edit "$tag" --notes-file "$notes" >/dev/null
+  echo "uploaded missing $asset_name and refreshed the notes of existing release $tag"
 else
   gh release create "$tag" "$asset" --verify-tag --title "jira-cli $tag" --notes-file "$notes"
 fi
