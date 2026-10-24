@@ -50,7 +50,13 @@ jira comment list KAN-12 [--limit <n>]                # oldest first (50)
 jira comment add KAN-12 "text" | --file <path|->
 jira comment edit KAN-12 10001 "text" | --file <path|->
 jira comment delete KAN-12 10001 --yes
+jira report flow [--board <id>] [--days <n>] [--limit <n>]   # throughput per week, cycle and lead time, oldest open (30 days)
+jira report workload [--board <id>] [--limit <n>]           # open tickets per person and status
+jira report sprint [sprintId] [--board <id>]                # done vs not done; default: active sprint, else last closed
+jira report velocity [--board <id>] [--sprints <n>]         # done per closed sprint (last 6)
 ```
+
+Reports use the configured board unless `--board` is given. Cycle time runs from the first "in progress" status to the last move to done. Lead time runs from created to done. Times are in days.
 
 ## `data` shapes
 
@@ -68,6 +74,13 @@ jira comment delete KAN-12 10001 --yes
 - `comment add` and `comment edit`: `{key, comment}`
 - Deletes: `{key, deleted: true}`, plus `id` for comments.
 
+- `report flow`: `{boardId, days, done, hasMore, cycleTime: {median, p85, count}, leadTime: {median, p85, count}, throughput: [{week, done}], oldestOpen: [{key, summary, status, ageDays}]}`
+  - `week` is the Monday (UTC, `YYYY-MM-DD`). `median` and `p85` are null with no data.
+- `report workload`: `{boardId, open, hasMore, statuses, people: [{assignee, total, byStatus: {<status>: n}}]}`
+- `report sprint`: `{boardId, sprint: {id, name, state, goal, startDate, endDate, completeDate}, tickets: {total, done, notDone}, points: {field, total, done}|null, byAssignee: [{assignee, total, done, points}], byStatus: [{status, count}], notDone: [{key, summary, status, assignee}]}`
+  - `points` is null when the board has no estimate field; its totals are null when no ticket has an estimate.
+- `report velocity`: `{boardId, pointsField, sprints: [{id, name, completeDate, total, done, pointsTotal, pointsDone}], average: {done, pointsDone}}` (oldest sprint first)
+
 A `comment` is `{id, author, created, updated, body}`. People are display names, and `null` means unassigned or unknown.
 
 ## Error codes
@@ -78,7 +91,7 @@ A `comment` is `{id, author, created, updated, body}`. People are display names,
 - `NO_TRANSITION`: `details` lists the allowed moves `[{id, name, to}]`. Pick one, or ask the user.
 - `TRANSITION_AMBIGUOUS`: pass a transition `id` from `details`.
 - `USER_NOT_FOUND`, `USER_AMBIGUOUS`: use the exact email or accountId. `details` lists the candidates.
-- `NO_SPRINTS`, `NO_ACTIVE_SPRINT`: on `board`, use `--sprint all`; on create or edit, drop `--sprint` (the board has no sprints or none is active).
+- `NO_SPRINTS`, `NO_ACTIVE_SPRINT`: on `board`, use `--sprint all`; on create or edit, drop `--sprint` (the board has no sprints or none is active). On `report sprint` and `report velocity`, the board has no sprints: use `report flow` instead.
 - `SPRINT_NOT_FOUND`, `SPRINT_AMBIGUOUS`: `details` lists the board's open sprints `[{id, name, state}]`. Pass one's id.
 - A create error that says "Created KEY, but…" means the ticket exists (`details.key`). Don't create it again; fix the cause and run `ticket edit KEY --sprint …`.
 - `CONFIRM_REQUIRED`: see Deletes above.

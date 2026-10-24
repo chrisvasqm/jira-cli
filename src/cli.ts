@@ -2,6 +2,7 @@ import { createRequire } from "node:module";
 import { Command, CommanderError } from "commander";
 import { registerBoard } from "./commands/board/index.js";
 import { registerComment } from "./commands/comment/index.js";
+import { registerReport } from "./commands/report/index.js";
 import { registerSetup } from "./commands/setup.js";
 import { registerTicket } from "./commands/ticket/index.js";
 import { CliError } from "./core/errors.js";
@@ -25,6 +26,7 @@ registerSetup(program);
 registerBoard(program);
 registerTicket(program);
 registerComment(program);
+registerReport(program);
 
 /** 130 for Ctrl+C, 2 for bad usage or missing input, 1 for everything else. */
 function exitCode(err: unknown): number {

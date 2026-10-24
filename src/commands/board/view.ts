@@ -72,7 +72,7 @@ export function registerView(board: Command): void {
       ]);
       const scope = sprintScope(opts.sprint, active);
       const jql = buildJql(boardConfig, [assignee], opts);
-      const result = await boards.issues(id, jql, limit, scope.sprintIds);
+      const result = await boards.issues(id, { jql, limit, sprintIds: scope.sprintIds });
       const view: BoardView = {
         boardId: id,
         boardType: boardConfig.type,
