@@ -8,6 +8,8 @@ The agent guide is the `jira-cli` skill in [chrisvasqm/skills](https://github.co
 
 When a command, flag, data shape or error code changes, update the README command table in the same PR, and open a matching PR for SKILL.md in chrisvasqm/skills.
 
+Every flag has a short form (`-g` for `--global`). Give each new flag one too, keep the shared meanings (`-n` how many, `-f` read text from a file, `-y` yes, `-b` board, `-S` sprint), and never reuse the global `-j`/`-c` on a subcommand: commander also reads global flags after the subcommand.
+
 ## Working on this repo
 
 - **Stack.**
@@ -20,6 +22,7 @@ When a command, flag, data shape or error code changes, update the README comman
 - **Checks.**
   - `pnpm check` runs the build, oxlint (max-depth 2, id-length ≥ 2, prefer-for-of, no-console) and `prettier --check`.
   - There are no automated tests (owner decision). Verify with `pnpm check` and a smoke run.
+  - After a command or flag change, run `pnpm build && scripts/regression.sh .`. It runs every command with short flags against the configured Jira, creates throwaway tickets and deletes them. `SOFT` lines are features the board lacks (e.g. sprints).
   - Touch a live Jira only with the owner's OK. Create throwaway tickets, and delete them afterwards.
 - **Config file.** `.jira-cli.json` (`baseUrl` https only, `email`, `apiToken`, `projectKey`, `boardId`) is gitignored and saved with mode 600. Never read it or commit it.
 - **Dependencies.** pnpm only, with exact versions. Never relax the supply-chain policy in `pnpm-workspace.yaml`.
