@@ -7,6 +7,7 @@ import { registerReport } from "./commands/report/index.js";
 import { registerSetup } from "./commands/setup.js";
 import { registerSprint } from "./commands/sprint/index.js";
 import { registerTicket } from "./commands/ticket/index.js";
+import { registerUser } from "./commands/user/index.js";
 import { registerWorklog } from "./commands/worklog/index.js";
 import { registerWatcher } from "./commands/watcher/index.js";
 import { CliError } from "./core/errors.js";
@@ -36,6 +37,7 @@ registerWorklog(program);
 registerLink(program);
 registerWatcher(program);
 registerReport(program);
+registerUser(program);
 
 /** 130 for Ctrl+C, 2 for bad usage or missing input, 1 for everything else. */
 function exitCode(err: unknown): number {

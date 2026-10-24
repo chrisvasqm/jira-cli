@@ -110,6 +110,8 @@ The agent adds `--json` to each command, so it reads exact data and stable error
 | `jira report workload`                | Open tickets per person and status                                            |
 | `jira report sprint [id]`             | A sprint's done and not-done tickets (default: active, else last closed)      |
 | `jira report velocity`                | Tickets and points done per closed sprint (`-n, --sprints <n>`, 6)            |
+| `jira user search <text>`             | People whose name or email starts with the text (`-n, --limit <n>`, 20)       |
+| `jira user view [who]`                | A user: `me` (default), an email, a name or an accountId                      |
 | `jira setup`                          | Create the config (see [Set up](#set-up))                                     |
 
 - **Board filters:**
@@ -134,6 +136,7 @@ The agent adds `--json` to each command, so it reads exact data and stable error
   - `edit` also takes `-rl, --remove-label`.
 - **Sprint fields (`create`, `edit`, `start`):** `-na, --name`, `-go, --goal` (`""` clears it on `edit`), `-sd, --start <date>`, `-e, --end <date>` (`2026-10-24` or an ISO timestamp). `list`, `view` and `create` take `-b, --board <id>`; `close` and `delete` ask first (`-y, --yes`). The board must use sprints (`NO_SPRINTS` otherwise).
 - **Reports** use the configured board, or `-b, --board <id>`. `flow` looks back `-da, --days <n>` (30); `flow` and `workload` take `-n, --limit <n>`. Cycle time runs from the first "in progress" status to done; lead time from created to done.
+- **Users:** `user search` takes `-k, --project <KEY>` to list only people who can be assigned tickets in that project. No match prints an empty list. `user view` shows the account id, email (when the profile shows it), time zone and status; a name that matches several people fails with `USER_AMBIGUOUS`.
 - **Move targets:** a status name, a transition name or id, or a board column. Case does not matter.
 - **History:** each entry shows who changed what and when, one `field: from → to` line per field. Long values are cut to 60 characters; `--json` keeps them whole, with `null` for an empty value.
 - **Rank:** `jira ticket rank KAN-5 KAN-6 -bf KAN-2` puts KAN-5, then KAN-6, right before KAN-2; `-af, --after <KEY>` puts them right after. Pass exactly one of `-bf, --before` and `-af, --after`, at most 50 tickets. If Jira ranks only some of them, the command fails with `RANK_FAILED` and lists each failed ticket.

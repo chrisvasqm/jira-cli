@@ -57,10 +57,26 @@ run "board view -sp all" ok -- board view -j -sp all -n 5
 run "board view -st" ok -- board view -j -st "Done" -n 5
 run "board view -sp active" soft -- board view -j -sp active -n 5
 
+# User
+run "user view (me)" ok -- user view -j
+ME_ID=$(jq -r '.data.accountId // empty' <<<"$LAST")
+ME_NAME=$(jq -r '.data.name // empty' <<<"$LAST")
+run "user view <accountId>" ok -- user view "$ME_ID" -j
+run "user search -n" ok -- user search "${ME_NAME%% *}" -j -n 5
+[[ $(jq -r '.data.users | length' <<<"$LAST") -ge 1 ]] && { PASS=$((PASS + 1)); echo "PASS user search finds me"; } || { FAIL=$((FAIL + 1)); echo "FAIL user search finds me"; }
+run "user search no match" ok -- user search zzzq-no-such-user -j
+[[ $(jq -r '.data.users | length' <<<"$LAST") == 0 ]] && { PASS=$((PASS + 1)); echo "PASS user search no match is empty"; } || { FAIL=$((FAIL + 1)); echo "FAIL user search no match is empty"; }
+run "user search -k unknown fails" fail -- user search a -j -k NOPE99
+code_is "user search -k unknown: PROJECT_NOT_FOUND" PROJECT_NOT_FOUND
+run "user search -n 0 fails" fail -- user search a -j -n 0
+run "user view unknown fails" fail -- user view zzzq-no-such-user -j
+code_is "user view unknown: USER_NOT_FOUND" USER_NOT_FOUND
+
 # Ticket create / view / edit
 run "ticket create -s -d -t -a -l" ok -- ticket create -j -s "Regression short flags (delete me)" -d "Created by regression" -t Task -a me -l regression-short
 KEY=$(jq -r '.data.key // empty' <<<"$LAST")
 [[ -z $KEY ]] && { echo "No ticket created; stopping"; exit 1; }
+run "user search -k" ok -- user search "${ME_NAME%% *}" -j -k "${KEY%%-*}"
 echo "  created $KEY"
 run "ticket create -pa (sub-task)" soft -- ticket create -j -s "Regression sub-task (delete me)" -t Subtask -pa "$KEY"
 SUB=$(jq -r '.data.key // empty' <<<"$LAST")
