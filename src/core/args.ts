@@ -35,6 +35,13 @@ export function commentId(raw: string): string {
   return id;
 }
 
+/** Attachment ids are numeric, e.g. "10042". */
+export function attachmentId(raw: string): string {
+  const id = raw.trim();
+  if (!/^\d+$/.test(id)) throw new CliError("USAGE", `"${raw}" is not an attachment id like 10042`);
+  return id;
+}
+
 /** Throws USAGE unless `end` is after `start` (both ISO strings, when given); `what` names the thing. */
 export function assertDateOrder(start: string | undefined, end: string | undefined, what: string): void {
   if (start && end && Date.parse(end) <= Date.parse(start)) {

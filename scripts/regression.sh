@@ -7,6 +7,7 @@ REPO=${1:?repo path}
 J=(node "$REPO/dist/index.js")
 PASS=0 FAIL=0 SOFT=0
 KEY="" SUB="" SPR=""
+TMP=$(mktemp -d)
 
 # run <name> <expect: ok|fail|soft> -- cmd...   (soft = may fail on some boards/projects)
 run() {
@@ -37,6 +38,7 @@ cleanup() {
   [[ -n $SPR ]] && "${J[@]}" sprint delete "$SPR" -y -j >/dev/null 2>&1
   [[ -n $SUB ]] && "${J[@]}" ticket delete "$SUB" -y -j >/dev/null 2>&1
   [[ -n $KEY ]] && "${J[@]}" ticket delete "$KEY" -y -w -j >/dev/null 2>&1
+  rm -rf "$TMP"
 }
 trap cleanup EXIT
 
@@ -78,6 +80,24 @@ run "comment list -n" ok -- comment list "$KEY" -j -n 10
 run "comment edit -f stdin" ok -- comment edit "$KEY" "$CID" -j -f - <<<"Edited comment"
 run "comment delete without -y fails" fail -- comment delete "$KEY" "$CID" -j </dev/null
 run "comment delete -y" ok -- comment delete "$KEY" "$CID" -j -y
+
+# Attachments
+printf 'regression attachment\n' >"$TMP/note.txt"
+mkdir -p "$TMP/out"
+run "attachment add missing file fails" fail -- attachment add "$KEY" -j "$TMP/missing.txt"
+code_is "attachment add missing file: FILE_ERROR" FILE_ERROR
+run "attachment add" ok -- attachment add "$KEY" -j "$TMP/note.txt"
+AID=$(jq -r '.data.attachments[0].id // empty' <<<"$LAST")
+run "attachment list" ok -- attachment list "$KEY" -j
+run "attachment get -ou dir" ok -- attachment get "$KEY" "$AID" -j -ou "$TMP/out"
+cmp -s "$TMP/note.txt" "$TMP/out/note.txt" && { PASS=$((PASS + 1)); echo "PASS attachment get content"; } || { FAIL=$((FAIL + 1)); echo "FAIL attachment get content"; }
+run "attachment get existing file fails" fail -- attachment get "$KEY" "$AID" -j -ou "$TMP/out"
+code_is "attachment get existing file: FILE_EXISTS" FILE_EXISTS
+run "attachment get -ou -y overwrites" ok -- attachment get "$KEY" "$AID" -j -ou "$TMP/out/note.txt" -y
+run "attachment get unknown id fails" fail -- attachment get "$KEY" 999999999 -j -ou "$TMP/out"
+code_is "attachment get unknown id: ATTACHMENT_NOT_FOUND" ATTACHMENT_NOT_FOUND
+run "attachment delete without -y fails" fail -- attachment delete "$KEY" "$AID" -j </dev/null
+run "attachment delete -y" ok -- attachment delete "$KEY" "$AID" -j -y
 
 # Reports
 run "report flow -da -n" ok -- report flow -j -da 7 -n 50

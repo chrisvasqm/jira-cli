@@ -13,6 +13,8 @@ const MAX_DELAY_MS = 8000;
 const RETRYABLE_STATUS = new Set([429, 502, 503, 504]);
 /** A request that gets no answer in this time fails (and a GET is retried). */
 const REQUEST_TIMEOUT_MS = 30_000;
+/** Uploads and downloads may move large files, so they get longer. */
+const TRANSFER_TIMEOUT_MS = 300_000;
 /** Longest Retry-After wait the client honors. */
 const MAX_RETRY_AFTER_MS = 60_000;
 
@@ -55,16 +57,45 @@ export class HttpClient {
     return this.send<T>("DELETE", path, undefined, false);
   }
 
+  /** Multipart POST (field `file`); Jira blocks it without the no-check token header. Retried only on 429. */
+  async upload<T>(path: string, form: FormData): Promise<T> {
+    const init: RequestInit = { method: "POST", headers: { "X-Atlassian-Token": "no-check" }, body: form };
+    const res = await this.request(path, init, false, TRANSFER_TIMEOUT_MS);
+    return this.decode<T>(res, "POST", path);
+  }
+
+  /** GET of a binary body; the caller reads the stream. Errors map like any request. */
+  async download(path: string): Promise<ReadableStream<Uint8Array>> {
+    const init: RequestInit = { method: "GET", headers: { Accept: "*/*" } };
+    const res = await this.request(path, init, true, TRANSFER_TIMEOUT_MS);
+    if (!res.ok) return this.decode<never>(res, "GET", path);
+    return res.body ?? new Blob([]).stream();
+  }
+
   private async send<T>(method: string, path: string, body: unknown, idempotent: boolean): Promise<T> {
+    const init: RequestInit = { method, headers: {} };
+    if (body !== undefined) {
+      init.headers = { "Content-Type": "application/json" };
+      init.body = JSON.stringify(body);
+    }
+    const res = await this.request(path, init, idempotent, REQUEST_TIMEOUT_MS);
+    return this.decode<T>(res, method, path);
+  }
+
+  /** Adds auth, retries transient failures; returns the final response, ok or not. */
+  private async request(
+    path: string,
+    init: RequestInit,
+    idempotent: boolean,
+    timeoutMs: number,
+  ): Promise<Response> {
     const url = `${this.creds.baseUrl}${path}`;
-    const headers: Record<string, string> = { Authorization: this.authHeader, Accept: "application/json" };
-    if (body !== undefined) headers["Content-Type"] = "application/json";
-    const init: RequestInit = { method, headers };
-    if (body !== undefined) init.body = JSON.stringify(body);
+    const headers = { Accept: "application/json", ...(init.headers as Record<string, string>) };
+    const full: RequestInit = { ...init, headers: { ...headers, Authorization: this.authHeader } };
 
     for (let attempt = 0; ; attempt++) {
       const more = attempt < MAX_RETRIES;
-      const res = await this.attempt(url, init, idempotent && more);
+      const res = await this.attempt(url, full, idempotent && more, timeoutMs);
       if (res === undefined) {
         await sleep(this.backoff(attempt));
         continue;
@@ -75,17 +106,26 @@ export class HttpClient {
         await sleep(this.backoff(attempt, res.headers.get("Retry-After")));
         continue;
       }
-      return this.decode<T>(res, method, path);
+      return res;
     }
   }
 
   /** Returns undefined when the network failed and a retry is allowed. */
-  private async attempt(url: string, init: RequestInit, canRetry: boolean): Promise<Response | undefined> {
+  private async attempt(
+    url: string,
+    init: RequestInit,
+    canRetry: boolean,
+    timeoutMs: number,
+  ): Promise<Response | undefined> {
     try {
-      return await fetch(url, { ...init, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
+      return await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
     } catch (err) {
       if (canRetry) return undefined;
-      throw new CliError("NETWORK_ERROR", `Could not reach ${this.creds.baseUrl}`, networkReason(err));
+      throw new CliError(
+        "NETWORK_ERROR",
+        `Could not reach ${this.creds.baseUrl}`,
+        networkReason(err, timeoutMs),
+      );
     }
   }
 
@@ -144,9 +184,9 @@ function retryAfterMs(header: string | null | undefined): number | undefined {
 }
 
 /** undici reports "fetch failed"; the real reason (DNS, TLS, refused) is in `cause`. */
-function networkReason(err: unknown): string {
+function networkReason(err: unknown, timeoutMs: number): string {
   if (err instanceof Error && err.name === "TimeoutError") {
-    return `No answer after ${REQUEST_TIMEOUT_MS / 1000}s`;
+    return `No answer after ${timeoutMs / 1000}s`;
   }
   const cause = err instanceof Error ? err.cause : undefined;
   if (cause instanceof Error) return `${err instanceof Error ? err.message : String(err)}: ${cause.message}`;

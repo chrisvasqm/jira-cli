@@ -72,32 +72,36 @@ The agent adds `--json` to each command, so it reads exact data and stable error
 
 ## Commands
 
-| Command                               | What it does                                                               |
-| ------------------------------------- | -------------------------------------------------------------------------- |
-| `jira board [view [id]]`              | Tickets on a board (default: yours), grouped by column                     |
-| `jira board list`                     | Boards you can see; `*` marks yours                                        |
-| `jira board use <id>`                 | Make a board and its project the default                                   |
-| `jira ticket view <KEY>`              | Fields, description and latest comments (`-n, --comments <0-100>`, 5)      |
-| `jira ticket create`                  | New ticket (`-s, --summary` is required)                                   |
-| `jira ticket edit <KEY>`              | Change only the fields you pass                                            |
-| `jira ticket move <KEY> [target]`     | Change the status; with no target, list the allowed moves                  |
-| `jira ticket delete <KEY>`            | Delete a ticket (`-w, --with-subtasks` also deletes sub-tasks)             |
-| `jira comment list <KEY>`             | All comments, oldest first (`-n, --limit <n>`, 50)                         |
-| `jira comment add <KEY> [text]`       | Add a comment                                                              |
-| `jira comment edit <KEY> <id> [text]` | Replace a comment's text                                                   |
-| `jira comment delete <KEY> <id>`      | Delete a comment                                                           |
-| `jira sprint list`                    | A board's sprints (`-se, --state open\|active\|future\|closed\|all`, open) |
-| `jira sprint view [id]`               | A sprint (default: the active sprint; `SPRINT_AMBIGUOUS` if several)       |
-| `jira sprint create`                  | New future sprint (`-na, --name` is required, at most 30 characters)       |
-| `jira sprint edit <id>`               | Change only the fields you pass                                            |
-| `jira sprint start <id>`              | Start a future sprint (default: now, for two weeks)                        |
-| `jira sprint close <id>`              | Close the active sprint; unfinished tickets go back to the backlog         |
-| `jira sprint delete <id>`             | Delete a sprint; its tickets go back to the backlog                        |
-| `jira report flow`                    | Throughput per week, cycle and lead time, oldest open tickets              |
-| `jira report workload`                | Open tickets per person and status                                         |
-| `jira report sprint [id]`             | A sprint's done and not-done tickets (default: active, else last closed)   |
-| `jira report velocity`                | Tickets and points done per closed sprint (`-n, --sprints <n>`, 6)         |
-| `jira setup`                          | Create the config (see [Set up](#set-up))                                  |
+| Command                               | What it does                                                                |
+| ------------------------------------- | --------------------------------------------------------------------------- |
+| `jira board [view [id]]`              | Tickets on a board (default: yours), grouped by column                      |
+| `jira board list`                     | Boards you can see; `*` marks yours                                         |
+| `jira board use <id>`                 | Make a board and its project the default                                    |
+| `jira ticket view <KEY>`              | Fields, description and latest comments (`-n, --comments <0-100>`, 5)       |
+| `jira ticket create`                  | New ticket (`-s, --summary` is required)                                    |
+| `jira ticket edit <KEY>`              | Change only the fields you pass                                             |
+| `jira ticket move <KEY> [target]`     | Change the status; with no target, list the allowed moves                   |
+| `jira ticket delete <KEY>`            | Delete a ticket (`-w, --with-subtasks` also deletes sub-tasks)              |
+| `jira comment list <KEY>`             | All comments, oldest first (`-n, --limit <n>`, 50)                          |
+| `jira comment add <KEY> [text]`       | Add a comment                                                               |
+| `jira comment edit <KEY> <id> [text]` | Replace a comment's text                                                    |
+| `jira comment delete <KEY> <id>`      | Delete a comment                                                            |
+| `jira attachment list <KEY>`          | A ticket's attachments: id, filename, size, type, author, created           |
+| `jira attachment add <KEY> <file...>` | Upload one or more files                                                    |
+| `jira attachment get <KEY> <id>`      | Download an attachment (`-ou, --output <path>`, default: its filename here) |
+| `jira attachment delete <KEY> <id>`   | Delete an attachment                                                        |
+| `jira sprint list`                    | A board's sprints (`-se, --state open\|active\|future\|closed\|all`, open)  |
+| `jira sprint view [id]`               | A sprint (default: the active sprint; `SPRINT_AMBIGUOUS` if several)        |
+| `jira sprint create`                  | New future sprint (`-na, --name` is required, at most 30 characters)        |
+| `jira sprint edit <id>`               | Change only the fields you pass                                             |
+| `jira sprint start <id>`              | Start a future sprint (default: now, for two weeks)                         |
+| `jira sprint close <id>`              | Close the active sprint; unfinished tickets go back to the backlog          |
+| `jira sprint delete <id>`             | Delete a sprint; its tickets go back to the backlog                         |
+| `jira report flow`                    | Throughput per week, cycle and lead time, oldest open tickets               |
+| `jira report workload`                | Open tickets per person and status                                          |
+| `jira report sprint [id]`             | A sprint's done and not-done tickets (default: active, else last closed)    |
+| `jira report velocity`                | Tickets and points done per closed sprint (`-n, --sprints <n>`, 6)          |
+| `jira setup`                          | Create the config (see [Set up](#set-up))                                   |
 
 - **Board filters:**
   - `-st, --status <column or status>`
@@ -125,6 +129,7 @@ The agent adds `--json` to each command, so it reads exact data and stable error
   - A blank line starts a new paragraph.
   - A single newline is a line break.
   - Lines between ` ``` ` fences become a code block.
+- **Attachments:** `get` saves to `-ou, --output <path>`, a file or an existing directory; by default it uses the attachment's filename in the current directory. It does not overwrite a file unless you pass `-y, --yes` (`FILE_EXISTS` otherwise). `add` checks every file before it uploads any (`FILE_ERROR`). `get` and `delete` refuse an id that is not on the ticket (`ATTACHMENT_NOT_FOUND`).
 - **Deletes** ask you to type "yes". `--yes` (`-y`) skips the question. With no terminal (scripts, agents), a delete without `--yes` fails with `CONFIRM_REQUIRED`.
 
 Every option has a short form, shown above. Short flags are lowercase, and some have two letters (`-st`, `-sp`), so write them apart: `-y -j`, not `-yj`. Run `jira <command> --help` for every option.
