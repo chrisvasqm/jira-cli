@@ -19,20 +19,26 @@ function collect(value: string, previous: string[] = []): string[] {
   return [...previous, value];
 }
 
-export function fieldOptions(cmd: Command): Command {
-  return cmd
+/** `--remove-label` only exists on edit: a new ticket has no labels to remove. */
+export function fieldOptions(cmd: Command, use: "create" | "edit"): Command {
+  cmd
     .option("--summary <text>", "Title")
     .option("--description <text>", "Description. Blank lines split paragraphs; ``` fences make code blocks")
     .option("--description-file <path>", "Read the description from a file (- reads stdin)")
     .option("--priority <name>", "Priority name, e.g. High")
     .option("--assignee <who>", "me, none, an email, a name or an accountId")
-    .option("--add-label <label>", "Add a label (repeat for more)", collect)
-    .option("--remove-label <label>", "Remove a label (repeat for more)", collect);
+    .option("--add-label <label>", "Add a label (repeat for more)", collect);
+  if (use === "edit") cmd.option("--remove-label <label>", "Remove a label (repeat for more)", collect);
+  return cmd;
 }
 
-/** Read text inputs before any network call, so usage errors come first. */
+/**
+ * Read text inputs before any network call, so usage errors come first.
+ * `--description ""` returns "", which edit uses to clear the description.
+ */
 export async function readDescription(opts: FieldOptions): Promise<string | undefined> {
   if (opts.description === undefined && opts.descriptionFile === undefined) return undefined;
+  if (opts.description === "" && opts.descriptionFile === undefined) return "";
   return readText(opts.description, opts.descriptionFile, "description");
 }
 
@@ -52,7 +58,7 @@ export async function buildEdit(
   const fields: Record<string, unknown> = {};
   const update: Record<string, unknown[]> = {};
   if (opts.summary !== undefined) fields["summary"] = opts.summary;
-  if (description !== undefined) fields["description"] = textToAdf(description);
+  if (description !== undefined) fields["description"] = description === "" ? null : textToAdf(description);
   if (opts.priority !== undefined) fields["priority"] = { name: opts.priority };
   if (opts.assignee !== undefined) fields["assignee"] = await assignee(opts.assignee);
   const labels = [

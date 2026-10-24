@@ -11,10 +11,21 @@ export function issueKey(raw: string): string {
 
 /** Whole number between min and max (inclusive), written as plain digits. */
 export function intInRange(raw: string, flag: string, min: number, max = Number.MAX_SAFE_INTEGER): number {
-  const value = /^\d+$/.test(raw) ? Number(raw) : Number.NaN;
+  const value = /^\d+$/.test(raw.trim()) ? Number(raw.trim()) : Number.NaN;
   if (Number.isSafeInteger(value) && value >= min && value <= max) return value;
   const range = max === Number.MAX_SAFE_INTEGER ? `of at least ${min}` : `from ${min} to ${max}`;
   throw new CliError("USAGE", `${flag} must be a whole number ${range}`);
+}
+
+export function boardId(raw: string): number {
+  return intInRange(raw, "board id", 1);
+}
+
+/** Project keys are upper-case letters and digits, e.g. "KAN"; accepts "kan". */
+export function projectKey(raw: string): string {
+  const key = raw.trim().toUpperCase();
+  if (!/^[A-Z][A-Z0-9_]*$/.test(key)) throw new CliError("USAGE", `"${raw}" is not a project key like ABC`);
+  return key;
 }
 
 /** Comment ids are numeric; accepts "#10001" as shown in the output. */

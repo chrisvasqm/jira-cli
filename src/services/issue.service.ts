@@ -1,7 +1,6 @@
 import { ticketNotFound } from "../core/errors.js";
 import { HttpClient } from "../core/http.js";
-import type { IssueDetail } from "../core/jira-types.js";
-import { ISSUE_LIST_FIELDS } from "./board.service.js";
+import { ISSUE_LIST_FIELDS, issuePath, type IssueDetail } from "../core/jira-types.js";
 
 export interface IssueEdit {
   fields: Record<string, unknown>;
@@ -16,9 +15,7 @@ export class IssueService {
 
   get(key: string): Promise<IssueDetail> {
     const params = new URLSearchParams({ fields: ISSUE_DETAIL_FIELDS });
-    return this.http
-      .get<IssueDetail>(`/rest/api/3/issue/${encodeURIComponent(key)}?${params}`)
-      .catch(ticketNotFound(key));
+    return this.http.get<IssueDetail>(`${issuePath(key)}?${params}`).catch(ticketNotFound(key));
   }
 
   /** POST /issue. `fields` must hold project, issuetype and summary. */
@@ -28,16 +25,12 @@ export class IssueService {
 
   /** PUT /issue/{key}: `fields` sets values, `update` applies operations such as label add/remove. */
   async update(key: string, edit: IssueEdit): Promise<void> {
-    await this.http
-      .put<undefined>(`/rest/api/3/issue/${encodeURIComponent(key)}`, edit)
-      .catch(ticketNotFound(key));
+    await this.http.put<undefined>(issuePath(key), edit).catch(ticketNotFound(key));
   }
 
   /** DELETE /issue/{key}. Jira refuses when the ticket has sub-tasks unless `withSubtasks`. */
   async remove(key: string, withSubtasks: boolean): Promise<void> {
     const params = new URLSearchParams({ deleteSubtasks: String(withSubtasks) });
-    await this.http
-      .delete<undefined>(`/rest/api/3/issue/${encodeURIComponent(key)}?${params}`)
-      .catch(ticketNotFound(key));
+    await this.http.delete<undefined>(`${issuePath(key)}?${params}`).catch(ticketNotFound(key));
   }
 }

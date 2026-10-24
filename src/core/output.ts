@@ -11,15 +11,28 @@ export function printResult(mode: OutputMode, data: unknown, human: () => string
   process.stdout.write(`${stripControls(human())}\n`);
 }
 
-/** Control and invisible format characters, except newline, tab and the zero-width joiner emoji use. */
-const HIDDEN = /(?![\n\t\u200d])[\p{Cc}\p{Cf}]/gu;
+/** Control and invisible format characters. */
+const HIDDEN = /[\p{Cc}\p{Cf}]/gu;
+/** Longest raw error body shown in human mode (e.g. an HTML error page). */
+const MAX_DETAIL_CHARS = 500;
 
 /**
  * Jira text is user-written, so drop terminal escape sequences, control characters
  * and invisible bidi or zero-width marks before it reaches a terminal.
  */
-function stripControls(text: string): string {
-  return stripVTControlCharacters(text).replace(HIDDEN, "");
+export function stripControls(text: string): string {
+  return stripVTControlCharacters(text).replace(HIDDEN, (char) => (keep(char) ? char : ""));
+}
+
+/** Newline, tab, and the zero-width joiner and tag characters that emoji sequences need. */
+function keep(char: string): boolean {
+  const code = char.codePointAt(0) ?? 0;
+  return char === "\n" || char === "\t" || code === 0x200d || (code >= 0xe0020 && code <= 0xe007f);
+}
+
+/** A note for people (progress, hints) on stderr, so stdout stays the result. */
+export function info(text: string): void {
+  process.stderr.write(`${stripControls(text)}\n`);
 }
 
 export function printError(mode: OutputMode, err: unknown): void {
@@ -37,12 +50,14 @@ export function printError(mode: OutputMode, err: unknown): void {
 
 function renderDetails(details: unknown): string | undefined {
   if (details === undefined || details === null) return undefined;
-  if (typeof details === "string") return details;
-  if (typeof details === "object" && "errorMessages" in details) {
-    const jira = details as { errorMessages?: string[]; errors?: Record<string, string> };
+  if (typeof details === "string") {
+    return details.length > MAX_DETAIL_CHARS ? `${details.slice(0, MAX_DETAIL_CHARS)}…` : details;
+  }
+  if (typeof details === "object" && ("errorMessages" in details || "errors" in details)) {
+    const jira = details as { errorMessages?: unknown[]; errors?: Record<string, unknown> };
     const lines = [
-      ...(jira.errorMessages ?? []),
-      ...Object.entries(jira.errors ?? {}).map(([k, v]) => `${k}: ${v}`),
+      ...(jira.errorMessages ?? []).map(String),
+      ...Object.entries(jira.errors ?? {}).map(([field, why]) => `${field}: ${asText(why)}`),
     ];
     if (lines.length > 0) return lines.map((line) => `  ${line}`).join("\n");
   }
@@ -51,6 +66,10 @@ function renderDetails(details: unknown): string | undefined {
   }
   // Structured details (e.g. allowed transitions) are for --json; the message already explains.
   return undefined;
+}
+
+function asText(value: unknown): string {
+  return typeof value === "string" ? value : JSON.stringify(value);
 }
 
 export function table(rows: ReadonlyArray<readonly [string, string]>): string {

@@ -10,18 +10,15 @@ import {
   type IssueSummary,
 } from "../../core/jira-types.js";
 import { printResult, table } from "../../core/output.js";
-import { localTime, renderComment } from "../render.js";
-import { CommentService } from "../../services/comment.service.js";
+import { localTime, renderComments, ticketUrl } from "../render.js";
+import { CommentService, MAX_LATEST } from "../../services/comment.service.js";
 import { IssueService } from "../../services/issue.service.js";
 
 interface ViewOptions {
   comments: string;
 }
 
-/** Jira's comment endpoint returns at most 100 per page. */
-const MAX_COMMENTS = 100;
-
-export interface TicketView extends IssueSummary {
+interface TicketView extends IssueSummary {
   url: string;
   reporter: string | null;
   labels: string[];
@@ -38,18 +35,18 @@ export function registerView(ticket: Command): void {
     .description("Show a ticket's details, description and latest comments")
     .option(
       "--comments <n>",
-      `How many of the latest comments to show (0 for none, at most ${MAX_COMMENTS})`,
+      `How many of the latest comments to show (0 for none, at most ${MAX_LATEST})`,
       "5",
     )
     .action(async (rawKey: string, opts: ViewOptions, cmd: Command) => {
       const key = issueKey(rawKey);
-      const limit = intInRange(opts.comments, "--comments", 0, MAX_COMMENTS);
+      const limit = intInRange(opts.comments, "--comments", 0, MAX_LATEST);
       const { config, mode } = bootstrap(cmd);
       const [issue, comments] = await Promise.all([
         new IssueService().get(key),
         limit > 0 ? new CommentService().latest(key, limit) : Promise.resolve(undefined),
       ]);
-      const view = toView(issue, `${config.baseUrl}/browse/${issue.key}`, {
+      const view = toView(issue, ticketUrl(config, issue.key), {
         total: comments?.total ?? null,
         shown: (comments?.comments ?? []).map(toCommentView),
       });
@@ -90,9 +87,7 @@ function renderHuman(view: TicketView): string {
   ];
   const { total, shown } = view.comments;
   if (total !== null && total > 0) {
-    const heading =
-      shown.length < total ? `Comments (latest ${shown.length} of ${total})` : `Comments (${total})`;
-    sections.push([heading, ...shown.map(renderComment)].join("\n\n"));
+    sections.push(renderComments("Comments", shown, total, "latest"));
   }
   return sections.join("\n\n");
 }

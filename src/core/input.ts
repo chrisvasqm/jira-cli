@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { text as readStream } from "node:stream/consumers";
 import { CliError } from "./errors.js";
+import { info } from "./output.js";
 
 /**
  * Text for a write command: given inline, or with --file <path> ("-" reads stdin).
@@ -22,7 +23,10 @@ export async function readText(
 }
 
 async function readSource(file: string): Promise<string> {
-  if (file === "-") return readStream(process.stdin);
+  if (file === "-") {
+    if (process.stdin.isTTY) info("Reading from the terminal; end with Ctrl+D.");
+    return readStream(process.stdin);
+  }
   return readFile(file, "utf8").catch((err: unknown) => {
     throw new CliError(
       "FILE_ERROR",

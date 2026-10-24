@@ -4,13 +4,13 @@ import { bootstrap } from "../../core/bootstrap.js";
 import { toCommentView, type CommentView } from "../../core/jira-types.js";
 import { printResult } from "../../core/output.js";
 import { CommentService } from "../../services/comment.service.js";
-import { renderComment } from "../render.js";
+import { renderComments } from "../render.js";
 
 interface ListOptions {
   limit: string;
 }
 
-export interface CommentList {
+interface CommentList {
   key: string;
   total: number;
   comments: CommentView[];
@@ -33,10 +33,6 @@ export function registerList(comment: Command): void {
 
 function renderHuman(view: CommentList): string {
   if (view.total === 0) return `${view.key} has no comments.`;
-  const shown = view.comments.length;
-  const heading =
-    shown < view.total
-      ? `${view.key} comments (first ${shown} of ${view.total}, raise --limit to see more)`
-      : `${view.key} comments (${view.total})`;
-  return [heading, ...view.comments.map(renderComment)].join("\n\n");
+  const body = renderComments(`${view.key} comments`, view.comments, view.total, "first");
+  return view.comments.length < view.total ? `${body}\n\nRaise --limit to see more.` : body;
 }

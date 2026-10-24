@@ -2,6 +2,7 @@ import { createInterface, type Interface } from "node:readline";
 import { stdin, stderr } from "node:process";
 import { Writable } from "node:stream";
 import { CliError } from "./errors.js";
+import { stripControls } from "./output.js";
 
 const eof = (): CliError => new CliError("INPUT_EOF", "Input ended before all prompts were answered.");
 const interrupted = (): CliError => new CliError("INTERRUPTED", "Cancelled.");
@@ -31,13 +32,21 @@ const output = new Writable({
  */
 function iface(): Interface {
   if (rl) return rl;
-  rl = createInterface({ input: stdin, output, terminal: Boolean(stdin.isTTY) });
+  // historySize 0: the Up arrow must never bring back an API token.
+  rl = createInterface({ input: stdin, output, terminal: Boolean(stdin.isTTY), historySize: 0 });
   rl.on("line", (line) => {
     const waiter = waiters.shift();
     if (waiter) waiter.resolve(line);
     else queued.push(line);
   });
-  rl.on("SIGINT", () => failAll(interrupted()));
+  rl.on("SIGINT", () => {
+    // With no question pending (e.g. during a request), Ctrl+C must still stop the CLI.
+    if (waiters.length === 0) {
+      closePrompts();
+      process.exit(130);
+    }
+    failAll(interrupted());
+  });
   rl.on("close", () => {
     ended = true;
     failAll(eof());
@@ -65,7 +74,7 @@ function nextLine(): Promise<string> {
 export async function ask(question: string, fallback?: string): Promise<string> {
   const io = iface();
   const suffix = fallback ? ` [${fallback}]` : "";
-  io.setPrompt(`${question}${suffix}: `);
+  io.setPrompt(stripControls(`${question}${suffix}: `));
   io.prompt();
   const answer = (await nextLine()).trim();
   return answer || fallback || "";
@@ -74,7 +83,7 @@ export async function ask(question: string, fallback?: string): Promise<string> 
 /** Like ask, but nothing typed is shown. */
 export async function askSecret(question: string): Promise<string> {
   const io = iface();
-  stderr.write(`${question}: `);
+  stderr.write(stripControls(`${question}: `));
   muted = true;
   try {
     return (await nextLine()).trim();

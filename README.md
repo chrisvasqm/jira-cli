@@ -42,6 +42,8 @@ Create an API token at https://id.atlassian.com/manage/api-tokens.
 
 Every command prints a human-readable result by default. Add `--json` for `{ "ok": true, "data": ... }` or `{ "ok": false, "error": { "code", "message", "details" } }` with a non-zero exit code on failure.
 
+Exit codes: `0` success, `1` Jira, network or config error, `2` bad usage or missing input, `130` cancelled with Ctrl+C.
+
 ## Releasing
 
 Every feature or fix PR ships a release:
