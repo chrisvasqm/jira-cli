@@ -7,6 +7,8 @@ import { table } from "../../core/output.js";
 import type { Sprint } from "../../services/board.service.js";
 import { SprintService } from "../../services/sprint.service.js";
 import { sprintSummary } from "../report/sprint-stats.js";
+
+export { sprintSummary };
 import { localTime } from "../render.js";
 
 export interface BoardOptions {
@@ -42,12 +44,13 @@ export async function sprintIn(id: number, state: Sprint["state"], action: strin
   const sprint = await new SprintService().get(id);
   if (sprint.state !== state) {
     const code = state === "future" ? "SPRINT_NOT_FUTURE" : "SPRINT_NOT_ACTIVE";
-    throw new CliError(code, `Sprint ${id} is ${sprint.state}; only a ${state} sprint can ${action}.`);
+    throw new CliError(
+      code,
+      `Sprint ${id} is ${sprint.state}; only ${state === "active" ? "an" : "a"} ${state} sprint can ${action}.`,
+    );
   }
   return sprint;
 }
-
-export const sprintView = sprintSummary;
 
 const when = (iso: string | null): string => (iso ? localTime(iso) : "-");
 

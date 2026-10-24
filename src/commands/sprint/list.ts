@@ -3,7 +3,7 @@ import { CliError } from "../../core/errors.js";
 import { grid, printResult } from "../../core/output.js";
 import { BoardService } from "../../services/board.service.js";
 import { localDate } from "../report/common.js";
-import { sprintContext, sprintView, type BoardOptions } from "./common.js";
+import { sprintContext, sprintSummary, type BoardOptions } from "./common.js";
 
 interface ListOptions extends BoardOptions {
   state: string;
@@ -29,7 +29,7 @@ export function registerList(sprint: Command): void {
       const { boardId, mode } = sprintContext(opts, cmd);
       const found = await new BoardService().sprints(boardId, state);
       if (found === undefined) throw new CliError("NO_SPRINTS", `Board ${boardId} does not use sprints.`);
-      const sprints = found.map(sprintView);
+      const sprints = found.map(sprintSummary);
       printResult(mode, { boardId, sprints }, () =>
         sprints.length === 0
           ? "No sprints."

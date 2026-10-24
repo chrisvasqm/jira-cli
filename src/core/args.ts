@@ -36,9 +36,20 @@ export function commentId(raw: string): string {
 }
 
 /** "2026-10-24" (local midnight) or a full ISO timestamp, as an ISO string for Jira. */
+/** Throws USAGE unless `end` is after `start` (both ISO strings, when given). */
+export function assertDateOrder(start: string | undefined, end: string | undefined): void {
+  if (start && end && Date.parse(end) <= Date.parse(start)) {
+    throw new CliError("USAGE", "The sprint must end after it starts");
+  }
+}
+
 export function dateArg(raw: string, flag: string): string {
   const text = raw.trim();
-  const date = /^\d{4}-\d{2}-\d{2}$/.test(text) ? new Date(`${text}T00:00:00`) : new Date(text);
-  if (/^\d{4}-\d{2}-\d{2}/.test(text) && !Number.isNaN(date.getTime())) return date.toISOString();
+  const day = /^(\d{4})-(\d{2})-(\d{2})/.exec(text);
+  const date = text.length === 10 ? new Date(`${text}T00:00:00`) : new Date(text);
+  // Date rolls 2026-02-30 over to March; a real date keeps its day of the month.
+  if (day && !Number.isNaN(date.getTime()) && (text.length > 10 || date.getDate() === Number(day[3]))) {
+    return date.toISOString();
+  }
   throw new CliError("USAGE", `${flag} must be a date like 2026-10-24 or an ISO timestamp`);
 }

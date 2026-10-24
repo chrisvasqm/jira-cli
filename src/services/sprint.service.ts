@@ -1,6 +1,6 @@
 import { CliError, notFoundAs, ticketNotFound } from "../core/errors.js";
 import { HttpClient } from "../core/http.js";
-import type { Sprint } from "./board.service.js";
+import { boardNotFound, type Sprint } from "./board.service.js";
 
 export interface SprintInput {
   name: string;
@@ -10,6 +10,10 @@ export interface SprintInput {
 }
 
 export type SprintUpdate = Partial<SprintInput> & { state?: "active" | "closed" };
+
+/** Jira's 400 for a kanban or simple board; narrower than other sprint errors (e.g. the name limit). */
+const doesNotSupportSprints = (details: unknown): boolean =>
+  /does not support sprints/i.test(JSON.stringify(details ?? ""));
 
 const sprintNotFound = (sprintId: number) =>
   notFoundAs("SPRINT_NOT_FOUND", `Sprint ${sprintId} does not exist or you cannot see it.`);
@@ -27,14 +31,10 @@ export class SprintService {
     return this.http
       .post<Sprint>("/rest/agile/1.0/sprint", { ...input, originBoardId: boardId })
       .catch((err: unknown) => {
-        if (
-          err instanceof CliError &&
-          err.status === 400 &&
-          /does not support sprints/i.test(JSON.stringify(err.details ?? err.message))
-        ) {
+        if (err instanceof CliError && err.status === 400 && doesNotSupportSprints(err.details)) {
           throw new CliError("NO_SPRINTS", `Board ${boardId} does not use sprints.`, err.details);
         }
-        throw err;
+        return boardNotFound(boardId)(err);
       });
   }
 

@@ -1,10 +1,10 @@
 import type { Command } from "commander";
-import { dateArg } from "../../core/args.js";
+import { assertDateOrder, dateArg } from "../../core/args.js";
 import { bootstrap } from "../../core/bootstrap.js";
 import { CliError } from "../../core/errors.js";
 import { printResult } from "../../core/output.js";
 import { SprintService, type SprintUpdate } from "../../services/sprint.service.js";
-import { renderSprint, sprintId, sprintName, sprintView } from "./common.js";
+import { renderSprint, sprintId, sprintName, sprintSummary } from "./common.js";
 
 interface EditOptions {
   name?: string;
@@ -28,11 +28,12 @@ export function registerEdit(sprint: Command): void {
       if (opts.goal !== undefined) update.goal = opts.goal;
       if (opts.start !== undefined) update.startDate = dateArg(opts.start, "--start");
       if (opts.end !== undefined) update.endDate = dateArg(opts.end, "--end");
+      assertDateOrder(update.startDate, update.endDate);
       if (Object.keys(update).length === 0) {
         throw new CliError("USAGE", "Nothing to change: pass --name, --goal, --start or --end");
       }
       const { mode } = bootstrap(cmd);
-      const view = sprintView(await new SprintService().update(id, update));
+      const view = sprintSummary(await new SprintService().update(id, update));
       printResult(mode, view, () => `Updated sprint ${id}.\n${renderSprint(view)}`);
     });
 }

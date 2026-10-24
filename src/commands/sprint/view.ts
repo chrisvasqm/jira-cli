@@ -3,7 +3,7 @@ import { CliError } from "../../core/errors.js";
 import { printResult } from "../../core/output.js";
 import { BoardService } from "../../services/board.service.js";
 import { SprintService } from "../../services/sprint.service.js";
-import { renderSprint, sprintContext, sprintId, sprintView, type BoardOptions } from "./common.js";
+import { renderSprint, sprintContext, sprintId, sprintSummary, type BoardOptions } from "./common.js";
 
 export function registerView(sprint: Command): void {
   sprint
@@ -14,7 +14,7 @@ export function registerView(sprint: Command): void {
       const id = rawId === undefined ? undefined : sprintId(rawId);
       const { boardId, mode } = sprintContext(opts, cmd);
       const found = id === undefined ? await activeSprint(boardId) : await new SprintService().get(id);
-      const view = sprintView(found);
+      const view = sprintSummary(found);
       printResult(mode, view, () => renderSprint(view));
     });
 }

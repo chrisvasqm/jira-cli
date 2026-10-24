@@ -3,7 +3,7 @@ import { bootstrap } from "../../core/bootstrap.js";
 import { confirm } from "../../core/confirm.js";
 import { printResult } from "../../core/output.js";
 import { SprintService } from "../../services/sprint.service.js";
-import { renderSprint, sprintId, sprintIn, sprintView } from "./common.js";
+import { renderSprint, sprintId, sprintIn, sprintSummary } from "./common.js";
 
 export function registerClose(sprint: Command): void {
   sprint
@@ -16,7 +16,7 @@ export function registerClose(sprint: Command): void {
       const found = await sprintIn(id, "active", "close");
       if (!opts.yes)
         await confirm(`Close sprint ${id} "${found.name}"? Its unfinished tickets go back to the backlog.`);
-      const view = sprintView(await new SprintService().update(id, { state: "closed" }));
+      const view = sprintSummary(await new SprintService().update(id, { state: "closed" }));
       printResult(mode, view, () => `Closed sprint ${id}.\n${renderSprint(view)}`);
     });
 }

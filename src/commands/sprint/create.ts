@@ -1,8 +1,8 @@
 import type { Command } from "commander";
-import { dateArg } from "../../core/args.js";
+import { assertDateOrder, dateArg } from "../../core/args.js";
 import { printResult } from "../../core/output.js";
 import { SprintService } from "../../services/sprint.service.js";
-import { renderSprint, sprintContext, sprintName, sprintView, type BoardOptions } from "./common.js";
+import { renderSprint, sprintContext, sprintName, sprintSummary, type BoardOptions } from "./common.js";
 
 interface CreateOptions extends BoardOptions {
   name: string;
@@ -24,6 +24,7 @@ export function registerCreate(sprint: Command): void {
       const name = sprintName(opts.name);
       const startDate = opts.start === undefined ? undefined : dateArg(opts.start, "--start");
       const endDate = opts.end === undefined ? undefined : dateArg(opts.end, "--end");
+      assertDateOrder(startDate, endDate);
       const { boardId, mode } = sprintContext(opts, cmd);
       const created = await new SprintService().create(boardId, {
         name,
@@ -31,7 +32,7 @@ export function registerCreate(sprint: Command): void {
         startDate,
         endDate,
       });
-      const view = sprintView(created);
+      const view = sprintSummary(created);
       printResult(mode, view, () => `Created sprint ${view.id}.\n${renderSprint(view)}`);
     });
 }

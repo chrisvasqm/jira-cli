@@ -86,16 +86,21 @@ SPR=$(jq -r '.data.id // empty' <<<"$LAST")
 if [[ -n $SPR ]]; then
   run "sprint create -N too long fails" fail -- sprint create -j -N "$(printf 'x%.0s' {1..31})"
   run "sprint create -s bad date fails" fail -- sprint create -j -N x -s nope
+  run "sprint create -s impossible date fails" fail -- sprint create -j -N x -s 2030-02-30
+  run "sprint create -e before -s fails" fail -- sprint create -j -N x -s 2030-01-21 -e 2030-01-07
   run "sprint edit -N -g" ok -- sprint edit "$SPR" -j -N "Regression sprint 2 (delete)" -g ""
   run "sprint edit nothing fails" fail -- sprint edit "$SPR" -j
   run "sprint close (future) fails" fail -- sprint close "$SPR" -j -y
   run "ticket edit -S <id>" ok -- ticket edit "$KEY" -j -S "$SPR"
   run "sprint start -e before -s fails" fail -- sprint start "$SPR" -j -s 2030-01-07 -e 2030-01-01
-  run "sprint start" ok -- sprint start "$SPR" -j
-  run "sprint start (active) fails" fail -- sprint start "$SPR" -j
-  run "sprint view <id>" ok -- sprint view "$SPR" -j
-  run "sprint close without -y fails" fail -- sprint close "$SPR" -j </dev/null
-  run "sprint close -y" ok -- sprint close "$SPR" -j -y
+  # Soft: Jira refuses a second active sprint unless the board allows parallel sprints.
+  run "sprint start" soft -- sprint start "$SPR" -j
+  if [[ $(jq -r '.data.state // empty' <<<"$LAST") == active ]]; then
+    run "sprint start (active) fails" fail -- sprint start "$SPR" -j
+    run "sprint view <id>" ok -- sprint view "$SPR" -j
+    run "sprint close without -y fails" fail -- sprint close "$SPR" -j </dev/null
+    run "sprint close -y" ok -- sprint close "$SPR" -j -y
+  fi
   run "sprint delete without -y fails" fail -- sprint delete "$SPR" -j </dev/null
   run "sprint delete -y" ok -- sprint delete "$SPR" -j -y
   SPR=""
