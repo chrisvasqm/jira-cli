@@ -4,6 +4,7 @@ import { registerBoard } from "./commands/board/index.js";
 import { registerComment } from "./commands/comment/index.js";
 import { registerReport } from "./commands/report/index.js";
 import { registerSetup } from "./commands/setup.js";
+import { registerSprint } from "./commands/sprint/index.js";
 import { registerTicket } from "./commands/ticket/index.js";
 import { CliError } from "./core/errors.js";
 import { outputMode } from "./core/bootstrap.js";
@@ -25,6 +26,7 @@ const program = new Command()
 registerSetup(program);
 registerBoard(program);
 registerTicket(program);
+registerSprint(program);
 registerComment(program);
 registerReport(program);
 

@@ -34,3 +34,11 @@ export function commentId(raw: string): string {
   if (!/^\d+$/.test(id)) throw new CliError("USAGE", `"${raw}" is not a comment id like 10001`);
   return id;
 }
+
+/** "2026-10-24" (local midnight) or a full ISO timestamp, as an ISO string for Jira. */
+export function dateArg(raw: string, flag: string): string {
+  const text = raw.trim();
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(text) ? new Date(`${text}T00:00:00`) : new Date(text);
+  if (/^\d{4}-\d{2}-\d{2}/.test(text) && !Number.isNaN(date.getTime())) return date.toISOString();
+  throw new CliError("USAGE", `${flag} must be a date like 2026-10-24 or an ISO timestamp`);
+}

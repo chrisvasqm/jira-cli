@@ -72,25 +72,32 @@ The agent adds `--json` to each command, so it reads exact data and stable error
 
 ## Commands
 
-| Command                               | What it does                                                          |
-| ------------------------------------- | --------------------------------------------------------------------- |
-| `jira board [view [id]]`              | Tickets on a board (default: yours), grouped by column                |
-| `jira board list`                     | Boards you can see; `*` marks yours                                   |
-| `jira board use <id>`                 | Make a board and its project the default                              |
-| `jira ticket view <KEY>`              | Fields, description and latest comments (`-n, --comments <0-100>`, 5) |
-| `jira ticket create`                  | New ticket (`-s, --summary` is required)                              |
-| `jira ticket edit <KEY>`              | Change only the fields you pass                                       |
-| `jira ticket move <KEY> [target]`     | Change the status; with no target, list the allowed moves             |
-| `jira ticket delete <KEY>`            | Delete a ticket (`-w, --with-subtasks` also deletes sub-tasks)        |
-| `jira comment list <KEY>`             | All comments, oldest first (`-n, --limit <n>`, 50)                    |
-| `jira comment add <KEY> [text]`       | Add a comment                                                         |
-| `jira comment edit <KEY> <id> [text]` | Replace a comment's text                                              |
-| `jira comment delete <KEY> <id>`      | Delete a comment                                                      |
-| `jira report flow`                    | Throughput per week, cycle and lead time, oldest open tickets         |
-| `jira report workload`                | Open tickets per person and status                                    |
-| `jira report sprint [id]`             | A sprint's done and not-done tickets (default: active sprint)         |
-| `jira report velocity`                | Tickets and points done per closed sprint (`-s, --sprints <n>`, 6)    |
-| `jira setup`                          | Create the config (see [Set up](#set-up))                             |
+| Command                               | What it does                                                              |
+| ------------------------------------- | ------------------------------------------------------------------------- |
+| `jira board [view [id]]`              | Tickets on a board (default: yours), grouped by column                    |
+| `jira board list`                     | Boards you can see; `*` marks yours                                       |
+| `jira board use <id>`                 | Make a board and its project the default                                  |
+| `jira ticket view <KEY>`              | Fields, description and latest comments (`-n, --comments <0-100>`, 5)     |
+| `jira ticket create`                  | New ticket (`-s, --summary` is required)                                  |
+| `jira ticket edit <KEY>`              | Change only the fields you pass                                           |
+| `jira ticket move <KEY> [target]`     | Change the status; with no target, list the allowed moves                 |
+| `jira ticket delete <KEY>`            | Delete a ticket (`-w, --with-subtasks` also deletes sub-tasks)            |
+| `jira comment list <KEY>`             | All comments, oldest first (`-n, --limit <n>`, 50)                        |
+| `jira comment add <KEY> [text]`       | Add a comment                                                             |
+| `jira comment edit <KEY> <id> [text]` | Replace a comment's text                                                  |
+| `jira comment delete <KEY> <id>`      | Delete a comment                                                          |
+| `jira sprint list`                    | A board's sprints (`-S, --state open\|active\|future\|closed\|all`, open) |
+| `jira sprint view [id]`               | A sprint (default: active sprint)                                         |
+| `jira sprint create`                  | New future sprint (`-N, --name` is required, at most 30 characters)       |
+| `jira sprint edit <id>`               | Change only the fields you pass                                           |
+| `jira sprint start <id>`              | Start a future sprint (default: now, for two weeks)                       |
+| `jira sprint close <id>`              | Close the active sprint; unfinished tickets go back to the backlog        |
+| `jira sprint delete <id>`             | Delete a sprint; its tickets go back to the backlog                       |
+| `jira report flow`                    | Throughput per week, cycle and lead time, oldest open tickets             |
+| `jira report workload`                | Open tickets per person and status                                        |
+| `jira report sprint [id]`             | A sprint's done and not-done tickets (default: active sprint)             |
+| `jira report velocity`                | Tickets and points done per closed sprint (`-s, --sprints <n>`, 6)        |
+| `jira setup`                          | Create the config (see [Set up](#set-up))                                 |
 
 - **Board filters:**
   - `-s, --status <column or status>`
@@ -111,6 +118,7 @@ The agent adds `--json` to each command, so it reads exact data and stable error
   - `-S, --sprint active|<id>|<name>|none`: put the ticket in a sprint of the configured board, or back in the backlog with `none`
   - `create` also takes `-t, --type` (default Task), `-P, --parent <KEY>` and `-k, --project <KEY>`.
   - `edit` also takes `-L, --remove-label`.
+- **Sprint fields (`create`, `edit`, `start`):** `-N, --name`, `-g, --goal` (`""` clears it on `edit`), `-s, --start <date>`, `-e, --end <date>` (`2026-10-24` or an ISO timestamp). `list`, `view` and `create` take `-b, --board <id>`; `close` and `delete` ask first (`-y, --yes`). The board must use sprints (`NO_SPRINTS` otherwise).
 - **Reports** use the configured board, or `-b, --board <id>`. `flow` looks back `-d, --days <n>` (30); `flow` and `workload` take `-n, --limit <n>`. Cycle time runs from the first "in progress" status to done; lead time from created to done.
 - **Move targets:** a status name, a transition name or id, or a board column. Case does not matter.
 - **Comment text:** pass it inline, or use `-f, --file <path>` (`-` reads stdin).

@@ -1,15 +1,52 @@
-import { notFoundAs, ticketNotFound } from "../core/errors.js";
+import { CliError, notFoundAs, ticketNotFound } from "../core/errors.js";
 import { HttpClient } from "../core/http.js";
 import type { Sprint } from "./board.service.js";
+
+export interface SprintInput {
+  name: string;
+  goal?: string | undefined;
+  startDate?: string | undefined;
+  endDate?: string | undefined;
+}
+
+export type SprintUpdate = Partial<SprintInput> & { state?: "active" | "closed" };
+
+const sprintNotFound = (sprintId: number) =>
+  notFoundAs("SPRINT_NOT_FOUND", `Sprint ${sprintId} does not exist or you cannot see it.`);
 
 /** /rest/agile/1.0 sprint, backlog and agile issue endpoints. */
 export class SprintService {
   constructor(private readonly http = HttpClient.get()) {}
 
   get(sprintId: number): Promise<Sprint> {
+    return this.http.get<Sprint>(`/rest/agile/1.0/sprint/${sprintId}`).catch(sprintNotFound(sprintId));
+  }
+
+  /** A new future sprint on the board; Jira answers 400 when the board does not use sprints. */
+  create(boardId: number, input: SprintInput): Promise<Sprint> {
     return this.http
-      .get<Sprint>(`/rest/agile/1.0/sprint/${sprintId}`)
-      .catch(notFoundAs("SPRINT_NOT_FOUND", `Sprint ${sprintId} does not exist or you cannot see it.`));
+      .post<Sprint>("/rest/agile/1.0/sprint", { ...input, originBoardId: boardId })
+      .catch((err: unknown) => {
+        if (
+          err instanceof CliError &&
+          err.status === 400 &&
+          /does not support sprints/i.test(JSON.stringify(err.details ?? err.message))
+        ) {
+          throw new CliError("NO_SPRINTS", `Board ${boardId} does not use sprints.`, err.details);
+        }
+        throw err;
+      });
+  }
+
+  /** Changes only the fields given; `state` starts (active) or closes (closed) the sprint. */
+  update(sprintId: number, input: SprintUpdate): Promise<Sprint> {
+    return this.http
+      .post<Sprint>(`/rest/agile/1.0/sprint/${sprintId}`, input)
+      .catch(sprintNotFound(sprintId));
+  }
+
+  async remove(sprintId: number): Promise<void> {
+    await this.http.delete<undefined>(`/rest/agile/1.0/sprint/${sprintId}`).catch(sprintNotFound(sprintId));
   }
 
   /** Moves the ticket into the sprint (out of any other open sprint). */
