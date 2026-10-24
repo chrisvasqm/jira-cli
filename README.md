@@ -86,6 +86,8 @@ The agent adds `--json` to each command, so it reads exact data and stable error
 | `jira ticket history <KEY>`           | Change history, newest first: who changed which field (`-n, --limit <n>`, 20) |
 | `jira ticket rank <KEY...>`           | Backlog order: put tickets before (`-bf`) or after (`-af`) another ticket     |
 | `jira ticket delete <KEY>`            | Delete a ticket (`-w, --with-subtasks` also deletes sub-tasks)                |
+| `jira epic list`                      | Epics in your project with progress (default: not done, latest updated first) |
+| `jira epic view <KEY>`                | An epic, its child tickets and progress `done x/y` (`-n, --limit <n>`, 50)    |
 | `jira comment list <KEY>`             | All comments, oldest first (`-n, --limit <n>`, 50)                            |
 | `jira comment add <KEY> [text]`       | Add a comment                                                                 |
 | `jira comment edit <KEY> <id> [text]` | Replace a comment's text                                                      |
@@ -148,6 +150,7 @@ The agent adds `--json` to each command, so it reads exact data and stable error
 
   Jira rejects bad JQL with `JQL_INVALID`.
 
+- **Epics:** `epic list` takes `-k, --project <KEY>`, `-st, --status <name>` (also shows done epics) and `-n, --limit <n>` (default 50, at most 100). Progress counts child tickets (`parent = KEY`) whose status category is done; `epic list` leaves it out (`null`) when the listed epics have over 1000 children together. `epic view` fails with `EPIC_NOT_FOUND` for an unknown key and `NOT_AN_EPIC` for a ticket of another type. `--json` gives each ticket's `statusCategory` (`new`, `indeterminate` or `done`), as `ticket view` and `ticket list` do.
 - **Ticket fields (`create` and `edit`):**
   - `-s, --summary`
   - `-d, --description <text>`, or `-f, --description-file <path>` (`-` reads stdin). On `edit`, `--description ""` clears the description.
