@@ -27,6 +27,8 @@ interface TicketView extends IssueSummary {
   parent: { key: string; summary: string | null } | null;
   sprint: { id: number; name: string; state: string } | null;
   created: string;
+  /** Jira durations such as "2h 30m"; null when nothing is logged or estimated. */
+  timeTracking: { spent: string | null; estimate: string | null; remaining: string | null } | null;
   description: string;
   /** total is null when comments were not requested (--comments 0). */
   comments: { total: number | null; shown: CommentView[] };
@@ -74,9 +76,19 @@ function toView(
     parent: fields.parent ? { key: fields.parent.key, summary: fields.parent.fields?.summary ?? null } : null,
     sprint: sprint && { id: sprint.id, name: sprint.name, state: sprint.state },
     created: fields.created,
+    timeTracking: toTimeTracking(fields.timetracking),
     description: adfToText(fields.description),
     comments,
   };
+}
+
+function toTimeTracking(raw: IssueDetail["fields"]["timetracking"]): TicketView["timeTracking"] {
+  const time = {
+    spent: raw?.timeSpent ?? null,
+    estimate: raw?.originalEstimate ?? null,
+    remaining: raw?.remainingEstimate ?? null,
+  };
+  return Object.values(time).some((value) => value !== null) ? time : null;
 }
 
 function renderHuman(view: TicketView): string {
@@ -90,6 +102,13 @@ function renderHuman(view: TicketView): string {
   if (view.parent) rows.push(["Parent", `${view.parent.key} ${view.parent.summary ?? ""}`.trim()]);
   if (view.sprint) rows.push(["Sprint", `${view.sprint.name} (${view.sprint.state}, #${view.sprint.id})`]);
   if (view.labels.length > 0) rows.push(["Labels", view.labels.join(", ")]);
+  if (view.timeTracking) {
+    const { spent, estimate, remaining } = view.timeTracking;
+    rows.push([
+      "Time",
+      `${spent ?? "0m"} spent, ${remaining ?? "none"} left of ${estimate ?? "no estimate"}`,
+    ]);
+  }
   rows.push(["Created", localTime(view.created)], ["Updated", localTime(view.updated)], ["URL", view.url]);
 
   const sections = [
