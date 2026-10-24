@@ -110,8 +110,43 @@ export class BoardService {
     }
   }
 
-  /** Issues matching the board filter, optionally narrowed by JQL, up to `limit`. */
-  async issues(boardId: number, jql: string | undefined, limit: number): Promise<IssueList> {
+  /**
+   * Issues matching the board filter, optionally narrowed by JQL, up to `limit`.
+   * With `sprintIds`, only those sprints' issues, read from the sprint endpoint
+   * (a `sprint in (...)` JQL clause fails on projects that have no Sprint field).
+   */
+  async issues(
+    boardId: number,
+    jql: string | undefined,
+    limit: number,
+    sprintIds?: number[],
+  ): Promise<IssueList> {
+    if (!sprintIds)
+      return this.fetchIssues(`/rest/agile/1.0/board/${boardId}/issue`, jql, limit, boardNotFound(boardId));
+    const issues: Issue[] = [];
+    let total: number | null = 0;
+    let hasMore = false;
+    for (const [index, sprintId] of sprintIds.entries()) {
+      const notFound = notFoundAs("SPRINT_NOT_FOUND", `Sprint ${sprintId} is not on board ${boardId}.`);
+      const path = `/rest/agile/1.0/board/${boardId}/sprint/${sprintId}/issue`;
+      const page = await this.fetchIssues(path, jql, limit - issues.length, notFound);
+      issues.push(...page.issues);
+      total = total === null || page.total === null ? null : total + page.total;
+      hasMore ||= page.hasMore;
+      if (issues.length >= limit) {
+        hasMore ||= index < sprintIds.length - 1;
+        break;
+      }
+    }
+    return { issues, total, hasMore };
+  }
+
+  private async fetchIssues(
+    path: string,
+    jql: string | undefined,
+    limit: number,
+    onError: (err: unknown) => never,
+  ): Promise<IssueList> {
     const result = await collectPages<Issue>(
       async (startAt, maxResults) => {
         const params = new URLSearchParams({
@@ -120,9 +155,7 @@ export class BoardService {
           fields: ISSUE_LIST_FIELDS,
         });
         if (jql) params.set("jql", jql);
-        const page = await this.http
-          .get<IssuePage>(`/rest/agile/1.0/board/${boardId}/issue?${params}`)
-          .catch(boardNotFound(boardId));
+        const page = await this.http.get<IssuePage>(`${path}?${params}`).catch(onError);
         return { items: page.issues, total: page.total };
       },
       limit,

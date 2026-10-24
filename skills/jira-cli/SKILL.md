@@ -54,7 +54,7 @@ jira comment delete KAN-12 10001 --yes
 
 ## `data` shapes
 
-- `board`: `{boardId, boardType, jql, note, total, fetched, hasMore, columns: [{name, issues: [{key, type, summary, status, priority, assignee, updated}]}]}`
+- `board`: `{boardId, boardType, jql, sprintIds, note, total, fetched, hasMore, columns: [{name, issues: [{key, type, summary, status, priority, assignee, updated}]}]}`
   - Every column is listed, plus `(no column)` for unmapped statuses.
   - If `hasMore` is true, raise `--limit`.
 - `board list`: `{boards: [{id, name, type, projectKey, current}]}`
