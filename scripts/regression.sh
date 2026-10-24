@@ -92,6 +92,17 @@ run "ticket move (list)" ok -- ticket move "$KEY" -j
 run "ticket history -n" ok -- ticket history "$KEY" -j -n 5
 run "ticket history -n 0 fails" fail -- ticket history "$KEY" -j -n 0
 
+# Ticket search and filters
+run "ticket list -n" ok -- ticket list -j -n 5
+run "ticket list -q -a -t -st -o -k" ok -- ticket list -j -q "key = $KEY" -a me -t Task -st "To Do" -o "created DESC" -k "${KEY%%-*}"
+[[ $(jq -r '.data.issues[0].key // empty' <<<"$LAST") == "$KEY" ]] && { PASS=$((PASS + 1)); echo "PASS ticket list finds $KEY"; } || { FAIL=$((FAIL + 1)); echo "FAIL ticket list finds $KEY"; }
+run "ticket list -sp none" soft -- ticket list -j -sp none -n 5
+run "ticket list -n 1001 fails" fail -- ticket list -j -n 1001
+run "ticket list -q bad JQL fails" fail -- ticket list -j -q "this is not jql ==="
+code_is "ticket list -q bad JQL: JQL_INVALID" JQL_INVALID
+run "ticket list -fi unknown fails" fail -- ticket list -j -fi "No such filter (regression)"
+code_is "ticket list -fi unknown: FILTER_NOT_FOUND" FILTER_NOT_FOUND
+run "filter list -n" ok -- filter list -j -n 5
 # Rank: a second throwaway ticket to rank against
 run "ticket create (rank target)" ok -- ticket create -j -s "Regression rank target (delete me)"
 RNK=$(jq -r '.data.key // empty' <<<"$LAST")
