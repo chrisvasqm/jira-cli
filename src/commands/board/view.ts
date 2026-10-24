@@ -46,10 +46,10 @@ export function registerView(board: Command): void {
     .command("view [id]", { isDefault: true })
     .description("Show a board's tickets grouped by column (default: the configured board)")
     .option(
-      "-S, --sprint <active|id|all>",
+      "-sp, --sprint <active|id|all>",
       "Sprint boards default to active sprints; 'all' lists every board issue",
     )
-    .option("-s, --status <name>", "Only issues in this column (or status) name")
+    .option("-st, --status <name>", "Only issues in this column (or status) name")
     .option(
       "-a, --assignee <me|user>",
       "Only issues assigned to me, none (unassigned), or <user> (email, name or accountId)",

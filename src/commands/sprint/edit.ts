@@ -17,9 +17,9 @@ export function registerEdit(sprint: Command): void {
   sprint
     .command("edit <id>")
     .description("Change a sprint's name, goal or dates; only the flags you pass change")
-    .option("-N, --name <name>", "New name")
-    .option("-g, --goal <text>", "New goal ('' clears it)")
-    .option("-s, --start <date>", "Start, e.g. 2026-10-24")
+    .option("-na, --name <name>", "New name")
+    .option("-go, --goal <text>", "New goal ('' clears it)")
+    .option("-sd, --start <date>", "Start, e.g. 2026-10-24")
     .option("-e, --end <date>", "End, e.g. 2026-11-07")
     .action(async (rawId: string, opts: EditOptions, cmd: Command) => {
       const id = sprintId(rawId);

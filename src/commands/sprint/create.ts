@@ -15,9 +15,9 @@ export function registerCreate(sprint: Command): void {
   sprint
     .command("create")
     .description("Create a future sprint on a board")
-    .requiredOption("-N, --name <name>", "Sprint name")
-    .option("-g, --goal <text>", "Sprint goal")
-    .option("-s, --start <date>", "Planned start, e.g. 2026-10-24")
+    .requiredOption("-na, --name <name>", "Sprint name")
+    .option("-go, --goal <text>", "Sprint goal")
+    .option("-sd, --start <date>", "Planned start, e.g. 2026-10-24")
     .option("-e, --end <date>", "Planned end, e.g. 2026-11-07")
     .option("-b, --board <id>", "Board id (default: the configured board)")
     .action(async (opts: CreateOptions, cmd: Command) => {

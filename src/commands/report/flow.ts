@@ -35,7 +35,7 @@ export function registerFlow(report: Command): void {
     .command("flow")
     .description("Throughput per week, cycle and lead time, and the oldest open tickets")
     .option("-b, --board <id>", "Board id (default: the configured board)")
-    .option("-d, --days <n>", "How far back to look", "30")
+    .option("-da, --days <n>", "How far back to look", "30")
     .option("-n, --limit <n>", "Maximum finished tickets to read", "1000")
     .action(async (opts: FlowOptions, cmd: Command) => {
       const days = intInRange(opts.days, "--days", 1, 3650);

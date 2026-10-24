@@ -8,7 +8,11 @@ The agent guide is the `jira-cli` skill in [chrisvasqm/skills](https://github.co
 
 When a command, flag, data shape or error code changes, update the README command table in the same PR, and open a matching PR for SKILL.md in chrisvasqm/skills.
 
-Every flag has a short form (`-g` for `--global`). Give each new flag one too, keep the shared meanings (`-n` how many, `-f` read text from a file, `-y` yes, `-b` board, `-S` sprint), and never reuse the global `-j`/`-c` on a subcommand: commander also reads global flags after the subcommand.
+Every flag has a short form (`-g` for `--global`). Give each new flag one too:
+
+- Short flags are lowercase. Each one has a single meaning across all commands (`-n` how many, `-f` read text from a file, `-y` yes, `-b` board, `-sp` sprint, `-st` status).
+- The first flag to use a letter keeps it. A later flag with another meaning gets two letters (`-st, --status` because `-s` is `--summary`). `src/core/flags.ts` registers these, rewrites them before commander parses, and fails at startup if one short flag gets two meanings.
+- Never reuse the global `-j`/`-c` on a subcommand: commander also reads global flags after the subcommand.
 
 ## Working on this repo
 
