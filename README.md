@@ -63,7 +63,7 @@ With the skill installed, ask in plain words and the agent runs the commands. So
 - **Standups and sprints**
   - "Write my standup." → your board and recent comments, turned into yesterday, today and blockers
   - "How is the sprint going?" → `jira report sprint` and `jira report workload`: what is at risk and who is overloaded
-  - "Are we getting faster?" → `jira report velocity -s 8` and `jira report flow -d 90`: trends and the oldest stuck tickets
+  - "Are we getting faster?" → `jira report velocity -n 8` and `jira report flow -da 90`: trends and the oldest stuck tickets
 - **With [testrail-cli](https://github.com/chrisvasqm/testrail-cli)**
   - "Write test cases for KAN-80." → the agent reads the acceptance criteria and creates cases linked to KAN-80.
   - "T45 failed. File a bug." → `testrail result add T45 --status failed --comment "…" --create-bug`

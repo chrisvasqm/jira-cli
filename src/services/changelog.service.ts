@@ -3,7 +3,7 @@ import { HttpClient } from "../core/http.js";
 import { collectPages } from "../core/paging.js";
 import { issuePath, type JiraUser } from "../core/jira-types.js";
 
-export interface ChangeItem {
+export interface ChangelogItem {
   field: string;
   fromString?: string | null;
   toString?: string | null;
@@ -14,7 +14,7 @@ export interface Changelog {
   /** Missing for some automated or anonymous changes. */
   author?: JiraUser;
   created: string;
-  items: ChangeItem[];
+  items: ChangelogItem[];
 }
 
 interface ChangelogPage {
@@ -23,7 +23,7 @@ interface ChangelogPage {
   isLast?: boolean;
 }
 
-export interface History {
+export interface ChangelogEntry {
   /** Newest first. */
   entries: Changelog[];
   total: number;
@@ -37,7 +37,7 @@ export class ChangelogService {
   constructor(private readonly http = HttpClient.get()) {}
 
   /** Newest `limit` (>= 1) changelogs, newest first. */
-  async latest(key: string, limit: number): Promise<History> {
+  async latest(key: string, limit: number): Promise<ChangelogEntry> {
     // Most tickets fit in one page; otherwise its total tells where the newest page starts.
     const first = await this.page(key, 0, PAGE_SIZE);
     if (first.isLast === true || first.values.length >= first.total) {

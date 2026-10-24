@@ -4,7 +4,7 @@ import { intInRange, issueKey } from "../../core/args.js";
 import type { Config } from "../../core/config.js";
 import { confirm } from "../../core/confirm.js";
 import { CliError } from "../../core/errors.js";
-import { quote } from "../../core/jql.js";
+import { quote, userJql } from "../../core/jql.js";
 import { info, printResult, type OutputMode } from "../../core/output.js";
 import { SearchService } from "../../services/search.service.js";
 
@@ -49,7 +49,7 @@ export function parseSelection(raw: string | undefined, opts: BulkOptions): Sele
   }
   if (opts.jql !== undefined) {
     if (!opts.jql.trim()) throw new CliError("USAGE", "--jql cannot be empty");
-    return { bulk: true, jql: opts.jql };
+    return { bulk: true, jql: userJql(opts.jql) };
   }
   if (raw === undefined)
     throw new CliError("USAGE", "Pass a ticket key, a comma-separated key list or --jql");

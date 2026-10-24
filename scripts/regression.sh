@@ -168,6 +168,9 @@ run "attachment delete without -y fails" fail -- attachment delete "$KEY" "$AID"
 run "attachment delete -y" ok -- attachment delete "$KEY" "$AID" -j -y
 # Worklogs and estimates (soft: the site may have time tracking off)
 run "ticket edit -es -re" soft -- ticket edit "$KEY" -j -es 1d -re 6h
+run "ticket edit -re only" soft -- ticket edit "$KEY" -j -re 5h
+run "ticket view after -re" ok -- ticket view "$KEY" -j -n 0
+[[ $(jq -r '.data.timeTracking.estimate // empty' <<<"$LAST") == 1d ]] && { PASS=$((PASS + 1)); echo "PASS -re keeps the original estimate"; } || { SOFT=$((SOFT + 1)); echo "SOFT -re keeps the original estimate"; }
 run "ticket edit -es bad fails" fail -- ticket edit "$KEY" -j -es 2x
 run "worklog add bad duration fails" fail -- worklog add "$KEY" 0h -j
 run "worklog add -sd -d" soft -- worklog add "$KEY" 2h30m -j -sd 2026-10-20 -d "Regression worklog"

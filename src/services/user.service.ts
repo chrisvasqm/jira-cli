@@ -44,11 +44,12 @@ export class UserService {
       params.set("project", project);
       path = "/rest/api/3/user/assignable/search";
     }
-    const found = await this.http
-      .get<FoundUser[]>(`${path}?${params}`)
-      .catch(
-        notFoundAs("PROJECT_NOT_FOUND", `Project ${project ?? ""} does not exist or you cannot see it.`),
-      );
+    const request = this.http.get<FoundUser[]>(`${path}?${params}`);
+    const found = await (project === undefined
+      ? request
+      : request.catch(
+          notFoundAs("PROJECT_NOT_FOUND", `Project ${project} does not exist or you cannot see it.`),
+        ));
     return found.filter(isPerson);
   }
 

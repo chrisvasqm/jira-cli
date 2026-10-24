@@ -2,7 +2,7 @@ import type { Command } from "commander";
 import { intInRange, projectKey } from "../../core/args.js";
 import { bootstrap } from "../../core/bootstrap.js";
 import { summarize, type IssueSummary } from "../../core/jira-types.js";
-import { quote } from "../../core/jql.js";
+import { quote, userJql } from "../../core/jql.js";
 import { grid, printResult } from "../../core/output.js";
 import { FilterService } from "../../services/filter.service.js";
 import { SearchService } from "../../services/search.service.js";
@@ -46,7 +46,10 @@ export function registerList(ticket: Command): void {
       "-sp, --sprint <sprint>",
       "active, a sprint id or name (configured board), or none for tickets in no sprint",
     )
-    .option("-fi, --filter <id|name>", "Start from a saved filter instead of the project")
+    .option(
+      "-fi, --filter <id|name>",
+      "Start from a saved filter instead of the project; also drops the default 'not done' condition",
+    )
     .option("-o, --order-by <fields>", "JQL sort", "updated DESC")
     .option("-n, --limit <n>", `Maximum tickets to fetch (1-${MAX_LIMIT})`, "50")
     .action(async (opts: ListOptions, cmd: Command) => {
@@ -61,8 +64,9 @@ export function registerList(ticket: Command): void {
       const clauses = [base, assignee, sprint];
       if (opts.status) clauses.push(`status = ${quote(opts.status)}`);
       if (opts.type) clauses.push(`issuetype = ${quote(opts.type)}`);
-      // With -q the caller decides which statuses to see.
-      clauses.push(opts.jql ? `(${opts.jql})` : "statusCategory != Done");
+      // With -q or a saved filter the caller decides which statuses to see.
+      if (opts.jql) clauses.push(`(${userJql(opts.jql)})`);
+      else if (opts.filter === undefined) clauses.push("statusCategory != Done");
       const where = clauses.filter((clause) => clause !== undefined).join(" AND ");
       const jql = `${where} ORDER BY ${opts.orderBy}`;
       const found = await new SearchService().issues(jql, limit);
