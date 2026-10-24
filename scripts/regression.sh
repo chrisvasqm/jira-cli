@@ -6,7 +6,7 @@ set -u
 REPO=${1:?repo path}
 J=(node "$REPO/dist/index.js")
 PASS=0 FAIL=0 SOFT=0
-KEY="" SUB=""
+KEY="" SUB="" SPR=""
 
 # run <name> <expect: ok|fail|soft> -- cmd...   (soft = may fail on some boards/projects)
 run() {
@@ -25,6 +25,7 @@ run() {
 }
 
 cleanup() {
+  [[ -n $SPR ]] && "${J[@]}" sprint delete "$SPR" -y -j >/dev/null 2>&1
   [[ -n $SUB ]] && "${J[@]}" ticket delete "$SUB" -y -j >/dev/null 2>&1
   [[ -n $KEY ]] && "${J[@]}" ticket delete "$KEY" -y -w -j >/dev/null 2>&1
 }
@@ -75,6 +76,37 @@ run "report workload -n" ok -- report workload -j -n 50
 run "report sprint" soft -- report sprint -j
 run "report velocity -s" soft -- report velocity -j -s 2
 run "report flow -b bad fails" fail -- report flow -j -b 0
+
+# Sprints (soft: the board may not use sprints)
+run "sprint list -S" soft -- sprint list -j -S all
+run "sprint view (active)" soft -- sprint view -j
+run "sprint list -S bad fails" fail -- sprint list -j -S nope
+run "sprint create -N -g -s -e" soft -- sprint create -j -N "Regression sprint (delete me)" -g "Regression" -s 2030-01-07 -e 2030-01-21
+SPR=$(jq -r '.data.id // empty' <<<"$LAST")
+if [[ -n $SPR ]]; then
+  run "sprint create -N too long fails" fail -- sprint create -j -N "$(printf 'x%.0s' {1..31})"
+  run "sprint create -s bad date fails" fail -- sprint create -j -N x -s nope
+  run "sprint create -s impossible date fails" fail -- sprint create -j -N x -s 2030-02-30
+  run "sprint create -s junk after date fails" fail -- sprint create -j -N x -s 2030-01-07junk
+  run "sprint create -e before -s fails" fail -- sprint create -j -N x -s 2030-01-21 -e 2030-01-07
+  run "sprint edit -N -g" ok -- sprint edit "$SPR" -j -N "Regression sprint 2 (delete)" -g ""
+  run "sprint edit nothing fails" fail -- sprint edit "$SPR" -j
+  run "sprint edit -e before start fails" fail -- sprint edit "$SPR" -j -e 2029-12-01
+  run "sprint close (future) fails" fail -- sprint close "$SPR" -j -y
+  run "ticket edit -S <id>" ok -- ticket edit "$KEY" -j -S "$SPR"
+  run "sprint start -e before -s fails" fail -- sprint start "$SPR" -j -s 2030-01-07 -e 2030-01-01
+  # Soft: Jira refuses a second active sprint unless the board allows parallel sprints.
+  run "sprint start" soft -- sprint start "$SPR" -j
+  if [[ $(jq -r '.data.state // empty' <<<"$LAST") == active ]]; then
+    run "sprint start (active) fails" fail -- sprint start "$SPR" -j
+    run "sprint view <id>" ok -- sprint view "$SPR" -j
+    run "sprint close without -y fails" fail -- sprint close "$SPR" -j </dev/null
+    run "sprint close -y" ok -- sprint close "$SPR" -j -y
+  fi
+  run "sprint delete without -y fails" fail -- sprint delete "$SPR" -j </dev/null
+  run "sprint delete -y" ok -- sprint delete "$SPR" -j -y
+  [[ $(jq -r '.ok' <<<"$LAST") == true ]] && { run "sprint view deleted fails" fail -- sprint view "$SPR" -j; SPR=""; }
+fi
 
 # Delete
 run "ticket delete without -y fails" fail -- ticket delete "$KEY" -j </dev/null

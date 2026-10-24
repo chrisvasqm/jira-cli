@@ -67,7 +67,7 @@ interface BoardConfiguration {
   estimation?: { type: string; field?: { fieldId: string; displayName: string } };
 }
 
-function boardNotFound(boardId: number): (err: unknown) => never {
+export function boardNotFound(boardId: number): (err: unknown) => never {
   return notFoundAs("BOARD_NOT_FOUND", `Board ${boardId} does not exist or you cannot see it.`);
 }
 

@@ -34,3 +34,31 @@ export function commentId(raw: string): string {
   if (!/^\d+$/.test(id)) throw new CliError("USAGE", `"${raw}" is not a comment id like 10001`);
   return id;
 }
+
+/** Throws USAGE unless `end` is after `start` (both ISO strings, when given); `what` names the thing. */
+export function assertDateOrder(start: string | undefined, end: string | undefined, what: string): void {
+  if (start && end && Date.parse(end) <= Date.parse(start)) {
+    throw new CliError("USAGE", `The ${what} must end after it starts`);
+  }
+}
+
+const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})(T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:?\d{2})?)?$/;
+
+/** "2026-10-24" (local midnight) or a full ISO timestamp, as an ISO string for Jira. */
+export function dateArg(raw: string, flag: string): string {
+  const text = raw.trim();
+  const parts = ISO_DATE.exec(text);
+  const date = new Date(parts?.[4] ? text : `${text}T00:00:00`);
+  // Date rolls 2026-02-30 over to March: the calendar day must exist.
+  const [year, month, day] = [1, 2, 3].map((index) => Number(parts?.[index]));
+  const calendar = new Date(Date.UTC(year!, month! - 1, day!));
+  if (
+    parts &&
+    !Number.isNaN(date.getTime()) &&
+    calendar.getUTCDate() === day &&
+    calendar.getUTCMonth() === month! - 1
+  ) {
+    return date.toISOString();
+  }
+  throw new CliError("USAGE", `${flag} must be a date like 2026-10-24 or an ISO timestamp`);
+}
