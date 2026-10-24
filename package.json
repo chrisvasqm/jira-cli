@@ -1,6 +1,6 @@
 {
   "name": "jira-cli",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "description": "Small Jira CLI for humans and agents",
   "type": "module",
   "engines": {
@@ -15,7 +15,7 @@
   ],
   "scripts": {
     "dev": "tsx src/index.ts",
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json --noEmit && esbuild src/index.ts --bundle --platform=node --format=esm --target=node24 --outfile=dist/index.js --log-level=warning \"--banner:js=import { createRequire as __bundleRequire } from 'node:module'; const require = __bundleRequire(import.meta.url);\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "check": "pnpm build && pnpm lint && pnpm format:check",
     "lint": "oxlint src",
@@ -32,15 +32,14 @@
       "onFail": "download"
     }
   },
-  "dependencies": {
-    "commander": "15.0.0",
-    "zod": "4.6.7"
-  },
   "devDependencies": {
     "@types/node": "26.6.5",
+    "commander": "15.0.0",
+    "esbuild": "0.28.2",
     "oxlint": "1.88.0",
     "prettier": "3.9.10",
     "tsx": "4.23.15",
-    "typescript": "7.0.2"
+    "typescript": "7.0.2",
+    "zod": "4.6.7"
   }
 }
