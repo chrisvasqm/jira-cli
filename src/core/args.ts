@@ -42,7 +42,6 @@ export function attachmentId(raw: string): string {
   return id;
 }
 
-
 /** Worklog ids are numeric; accepts "#10001" as shown in the output. */
 export function worklogId(raw: string): string {
   const id = raw.trim().replace(/^#/, "");
