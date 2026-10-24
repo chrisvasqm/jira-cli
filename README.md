@@ -18,6 +18,8 @@ To teach your AI agent (Claude Code, Codex, Cursor and others) to use the CLI, r
 npx skills add chrisvasqm/skills --skill jira-cli
 ```
 
+`npx skills add chrisvasqm/skills` adds every skill there, including the one for [testrail-cli](https://github.com/chrisvasqm/testrail-cli).
+
 ## Set up
 
 Run `jira setup` in the project directory. It asks for:
