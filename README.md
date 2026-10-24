@@ -77,6 +77,8 @@ The agent adds `--json` to each command, so it reads exact data and stable error
 | `jira board [view [id]]`              | Tickets on a board (default: yours), grouped by column                     |
 | `jira board list`                     | Boards you can see; `*` marks yours                                        |
 | `jira board use <id>`                 | Make a board and its project the default                                   |
+| `jira ticket list`                    | Search tickets (default: not done in your project, latest updated first)   |
+| `jira filter list`                    | Saved filters you own or marked as favourite (`-n, --limit <n>`, 50)       |
 | `jira ticket view <KEY>`              | Fields, description and latest comments (`-n, --comments <0-100>`, 5)      |
 | `jira ticket create`                  | New ticket (`-s, --summary` is required)                                   |
 | `jira ticket edit <KEY>`              | Change only the fields you pass                                            |
@@ -108,6 +110,19 @@ The agent adds `--json` to each command, so it reads exact data and stable error
   - `-n, --limit <n>` (default 100)
 
   Sprint boards show the active sprints by default.
+
+- **Ticket search (`ticket list`):**
+  - `-k, --project <KEY>` (default: your project)
+  - `-q, --jql <extra JQL>`, joined with AND. Without `-q`, done tickets are left out.
+  - `-a, --assignee me|none|<email, name or accountId>`
+  - `-st, --status <name>`
+  - `-t, --type <name>`
+  - `-sp, --sprint active|<id>|<name>|none`: a sprint of the configured board, or tickets in no sprint
+  - `-fi, --filter <id or name>`: start from a saved filter instead of your project (add `-k` to keep a project too)
+  - `-o, --order-by <JQL>` (default `updated DESC`)
+  - `-n, --limit <n>` (default 50, at most 1000)
+
+  Jira rejects bad JQL with `JQL_INVALID`.
 
 - **Ticket fields (`create` and `edit`):**
   - `-s, --summary`

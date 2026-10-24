@@ -1,4 +1,6 @@
+import { CliError } from "../core/errors.js";
 import { HttpClient } from "../core/http.js";
+import { ISSUE_LIST_FIELDS, type Issue } from "../core/jira-types.js";
 
 export interface ChangeItem {
   field: string;
@@ -53,7 +55,7 @@ export class SearchService {
       };
       if (options.changelog) body["expand"] = "changelog";
       if (nextPageToken) body["nextPageToken"] = nextPageToken;
-      const page = await this.http.post<SearchPage>("/rest/api/3/search/jql", body);
+      const page = await this.http.post<SearchPage>("/rest/api/3/search/jql", body).catch(jqlInvalid);
       issues.push(...page.issues);
       nextPageToken = page.nextPageToken;
       const more = Boolean(nextPageToken) && page.isLast !== true && page.issues.length > 0;
@@ -61,9 +63,23 @@ export class SearchService {
     }
   }
 
+  /** Issues with the fields `summarize()` reads. */
+  async issues(jql: string, limit: number): Promise<{ issues: Issue[]; hasMore: boolean }> {
+    const found = await this.search(jql, ISSUE_LIST_FIELDS.split(","), { limit });
+    return { issues: found.issues as unknown as Issue[], hasMore: found.hasMore };
+  }
+
   /** Status id → category key ("new", "indeterminate", "done"), to read changelog transitions. */
   async statusCategories(): Promise<Map<string, string>> {
     const statuses = await this.http.get<Status[]>("/rest/api/3/status");
     return new Map(statuses.map((status) => [status.id, status.statusCategory.key]));
   }
+}
+
+/** Jira answers 400 when the JQL does not parse or names an unknown field, value or function. */
+function jqlInvalid(err: unknown): never {
+  if (err instanceof CliError && err.status === 400) {
+    throw new CliError("JQL_INVALID", "Jira rejected the JQL query.", err.details);
+  }
+  throw err;
 }

@@ -71,6 +71,18 @@ run "ticket edit -sp active" soft -- ticket edit "$KEY" -j -sp active
 run "ticket edit -sp none" soft -- ticket edit "$KEY" -j -sp none
 run "ticket move (list)" ok -- ticket move "$KEY" -j
 
+# Ticket search and filters
+run "ticket list -n" ok -- ticket list -j -n 5
+run "ticket list -q -a -t -st -o -k" ok -- ticket list -j -q "key = $KEY" -a me -t Task -st "To Do" -o "created DESC" -k "${KEY%%-*}"
+[[ $(jq -r '.data.issues[0].key // empty' <<<"$LAST") == "$KEY" ]] && { PASS=$((PASS + 1)); echo "PASS ticket list finds $KEY"; } || { FAIL=$((FAIL + 1)); echo "FAIL ticket list finds $KEY"; }
+run "ticket list -sp none" soft -- ticket list -j -sp none -n 5
+run "ticket list -n 1001 fails" fail -- ticket list -j -n 1001
+run "ticket list -q bad JQL fails" fail -- ticket list -j -q "this is not jql ==="
+code_is "ticket list -q bad JQL: JQL_INVALID" JQL_INVALID
+run "ticket list -fi unknown fails" fail -- ticket list -j -fi "No such filter (regression)"
+code_is "ticket list -fi unknown: FILTER_NOT_FOUND" FILTER_NOT_FOUND
+run "filter list -n" ok -- filter list -j -n 5
+
 # Comments
 run "comment add -f stdin" ok -- comment add "$KEY" -j -f - <<<"Comment from stdin"
 CID=$(jq -r '.data.comment.id // empty' <<<"$LAST")
