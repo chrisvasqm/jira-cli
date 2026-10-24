@@ -40,6 +40,8 @@ interface IssueDetailFields extends IssueFields {
   labels?: string[];
   description?: AdfNode | null;
   parent?: { key: string; fields?: { summary?: string } } | null;
+  components?: { name: string }[];
+  fixVersions?: { name: string }[];
   timetracking?: { originalEstimate?: string; remainingEstimate?: string; timeSpent?: string };
 }
 

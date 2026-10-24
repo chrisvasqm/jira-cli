@@ -116,6 +116,11 @@ The agent adds `--json` to each command, so it reads exact data and stable error
 | `jira report workload`                | Open tickets per person and status                                            |
 | `jira report sprint [id]`             | A sprint's done and not-done tickets (default: active, else last closed)      |
 | `jira report velocity`                | Tickets and points done per closed sprint (`-n, --sprints <n>`, 6)            |
+| `jira project list`                   | Projects you can see; `*` marks yours (`-n, --limit <n>`, 50)                 |
+| `jira component list`                 | A project's components (`-k, --project <KEY>`)                                |
+| `jira version list`                   | A project's versions, unreleased first (`-k, --project <KEY>`)                |
+| `jira label list`                     | Labels used on the site (`-n, --limit <n>`, 1000)                             |
+| `jira field list [text]`              | Fields and their ids; `text` filters names (any case)                         |
 | `jira user search <text>`             | People whose name or email starts with the text (`-n, --limit <n>`, 20)       |
 | `jira user view [who]`                | A user: `me` (default), an email, a name or an accountId                      |
 | `jira setup`                          | Create the config (see [Set up](#set-up))                                     |
@@ -150,11 +155,13 @@ The agent adds `--json` to each command, so it reads exact data and stable error
   - `-a, --assignee me|none|<email, name or accountId>`
   - `-l, --add-label` (repeatable)
   - `-sp, --sprint active|<id>|<name>|none`: put the ticket in a sprint of the configured board, or back in the backlog with `none`
+  - `-co, --component <names>` and `-fv, --fix-version <names>`: comma-separated names of the project's components or versions (see `jira component list`, `jira version list`). Each sets the whole list; on `edit`, `""` clears it.
   - `-es, --estimate <duration>` and `-re, --remaining <duration>`: original and remaining estimate, e.g. `2h30m` or `1d`. `TIME_TRACKING_DISABLED` when the site has time tracking off.
   - `create` also takes `-t, --type` (default Task), `-pa, --parent <KEY>` and `-k, --project <KEY>`.
   - `edit` also takes `-rl, --remove-label`.
 - **Sprint fields (`create`, `edit`, `start`):** `-na, --name`, `-go, --goal` (`""` clears it on `edit`), `-sd, --start <date>`, `-e, --end <date>` (`2026-10-24` or an ISO timestamp). `list`, `view` and `create` take `-b, --board <id>`; `close` and `delete` ask first (`-y, --yes`). The board must use sprints (`NO_SPRINTS` otherwise).
 - **Reports** use the configured board, or `-b, --board <id>`. `flow` looks back `-da, --days <n>` (30); `flow` and `workload` take `-n, --limit <n>`. Cycle time runs from the first "in progress" status to done; lead time from created to done.
+- **Project metadata:** `component list` and `version list` use the configured project, or `-k, --project <KEY>`. Use `field list` to find a custom field id, e.g. `jira field list points`.
 - **Users:** `user search` takes `-k, --project <KEY>` to list only people who can be assigned tickets in that project. No match prints an empty list. `user view` shows the account id, email (when the profile shows it), time zone and status; a name that matches several people fails with `USER_AMBIGUOUS`.
 - **Move targets:** a status name, a transition name or id, or a board column. Case does not matter.
 - **History:** each entry shows who changed what and when, one `field: from → to` line per field. Long values are cut to 60 characters; `--json` keeps them whole, with `null` for an empty value.

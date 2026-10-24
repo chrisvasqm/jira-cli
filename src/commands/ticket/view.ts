@@ -24,6 +24,8 @@ interface TicketView extends IssueSummary {
   url: string;
   reporter: string | null;
   labels: string[];
+  components: string[];
+  fixVersions: string[];
   parent: { key: string; summary: string | null } | null;
   sprint: { id: number; name: string; state: string } | null;
   created: string;
@@ -73,6 +75,8 @@ function toView(
     url,
     reporter: fields.reporter?.displayName ?? null,
     labels: fields.labels ?? [],
+    components: (fields.components ?? []).map((item) => item.name),
+    fixVersions: (fields.fixVersions ?? []).map((item) => item.name),
     parent: fields.parent ? { key: fields.parent.key, summary: fields.parent.fields?.summary ?? null } : null,
     sprint: sprint && { id: sprint.id, name: sprint.name, state: sprint.state },
     created: fields.created,
@@ -102,6 +106,8 @@ function renderHuman(view: TicketView): string {
   if (view.parent) rows.push(["Parent", `${view.parent.key} ${view.parent.summary ?? ""}`.trim()]);
   if (view.sprint) rows.push(["Sprint", `${view.sprint.name} (${view.sprint.state}, #${view.sprint.id})`]);
   if (view.labels.length > 0) rows.push(["Labels", view.labels.join(", ")]);
+  if (view.components.length > 0) rows.push(["Components", view.components.join(", ")]);
+  if (view.fixVersions.length > 0) rows.push(["Fix versions", view.fixVersions.join(", ")]);
   if (view.timeTracking) {
     const { spent, estimate, remaining } = view.timeTracking;
     rows.push([
