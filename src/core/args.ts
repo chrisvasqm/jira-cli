@@ -35,6 +35,13 @@ export function commentId(raw: string): string {
   return id;
 }
 
+/** Attachment ids are numeric, e.g. "10042". */
+export function attachmentId(raw: string): string {
+  const id = raw.trim();
+  if (!/^\d+$/.test(id)) throw new CliError("USAGE", `"${raw}" is not an attachment id like 10042`);
+  return id;
+}
+
 /** Worklog ids are numeric; accepts "#10001" as shown in the output. */
 export function worklogId(raw: string): string {
   const id = raw.trim().replace(/^#/, "");

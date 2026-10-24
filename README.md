@@ -90,6 +90,10 @@ The agent adds `--json` to each command, so it reads exact data and stable error
 | `jira comment add <KEY> [text]`       | Add a comment                                                                 |
 | `jira comment edit <KEY> <id> [text]` | Replace a comment's text                                                      |
 | `jira comment delete <KEY> <id>`      | Delete a comment                                                              |
+| `jira attachment list <KEY>`          | A ticket's attachments: id, filename, size, type, author, created             |
+| `jira attachment add <KEY> <file...>` | Upload one or more files                                                      |
+| `jira attachment get <KEY> <id>`      | Download an attachment (`-ou, --output <path>`, default: its filename here)   |
+| `jira attachment delete <KEY> <id>`   | Delete an attachment                                                          |
 | `jira worklog list <KEY>`             | Time logged on a ticket (`-n, --limit <n>`, 50)                               |
 | `jira worklog add <KEY> <duration>`   | Log time, e.g. `2h30m`, `1d`, `45m`                                           |
 | `jira worklog delete <KEY> <id>`      | Delete a worklog                                                              |
@@ -159,6 +163,7 @@ The agent adds `--json` to each command, so it reads exact data and stable error
   - A blank line starts a new paragraph.
   - A single newline is a line break.
   - Lines between ` ``` ` fences become a code block.
+- **Attachments:** `get` saves to `-ou, --output <path>`, a file or an existing directory; by default it uses the attachment's filename in the current directory. It does not overwrite a file unless you pass `-y, --yes` (`FILE_EXISTS` otherwise). `add` checks every file before it uploads any (`FILE_ERROR`). `get` and `delete` refuse an id that is not on the ticket (`ATTACHMENT_NOT_FOUND`).
 - **Worklogs:** a duration is weeks, days, hours and minutes (`1w`, `1d`, `2h30m`, `45m`). `add` takes `-sd, --start <date>` (default now) and a note with `-d, --description <text>` or `-f, --file <path>` (`-` reads stdin). Logging time lowers the remaining estimate. `ticket view` shows time spent, remaining and the estimate. With time tracking off, worklog commands fail with `TIME_TRACKING_DISABLED`; an unknown worklog id gives `WORKLOG_NOT_FOUND`.
 - **Links:** `<type>` is a link type's name, outward or inward phrase from `jira link types`, case-insensitive; quotes are optional (`is blocked by`). An inward phrase links the other way: `jira link add KAN-1 is blocked by KAN-2` means KAN-2 blocks KAN-1. Web link ids start with `w`, so `link remove` knows which kind to remove. `remove` asks first (`-y, --yes`).
 - **Watchers:** `[user]` is `me`, an email, a name or an accountId. `add` and `remove` are idempotent: adding a watcher who already watches, or removing one who does not, succeeds with `changed: false` and a `note`. `remove` does not ask first. `WATCHING_DISABLED` means the site turned watching off.
