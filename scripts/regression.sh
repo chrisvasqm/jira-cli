@@ -10,6 +10,7 @@ KEY="" SUB="" SPR=""
 TMP=$(mktemp -d)
 KEY="" SUB="" SPR="" LNK=""
 KEY="" SUB="" SPR="" RNK=""
+BK1="" BK2=""
 EPC="" ECH=""
 
 # run <name> <expect: ok|fail|soft> -- cmd...   (soft = may fail on some boards/projects)
@@ -45,6 +46,8 @@ cleanup() {
   [[ -n $ECH ]] && "${J[@]}" ticket delete "$ECH" -y -w -j >/dev/null 2>&1
   [[ -n $EPC ]] && "${J[@]}" ticket delete "$EPC" -y -w -j >/dev/null 2>&1
   [[ -n $KEY ]] && "${J[@]}" ticket delete "$KEY" -y -w -j >/dev/null 2>&1
+  [[ -n $BK1 ]] && "${J[@]}" ticket delete "$BK1" -y -w -j >/dev/null 2>&1
+  [[ -n $BK2 ]] && "${J[@]}" ticket delete "$BK2" -y -w -j >/dev/null 2>&1
   rm -rf "$TMP"
 }
 trap cleanup EXIT
@@ -283,6 +286,35 @@ if [[ -n $SPR ]]; then
   [[ $(jq -r '.ok' <<<"$LAST") == true ]] && { run "sprint view deleted fails" fail -- sprint view "$SPR" -j; SPR=""; }
 fi
 
+# Bulk edit / move: two throwaway tickets
+run "ticket create (bulk 1)" ok -- ticket create -j -s "Regression bulk one (delete me)"
+BK1=$(jq -r '.data.key // empty' <<<"$LAST")
+run "ticket create (bulk 2)" ok -- ticket create -j -s "Regression bulk two (delete me)"
+BK2=$(jq -r '.data.key // empty' <<<"$LAST")
+BLBL="regression-bulk-$$"
+run "ticket edit KEY,KEY without -y fails" fail -- ticket edit "$BK1,$BK2" -j -l "$BLBL" </dev/null
+code_is "ticket edit KEY,KEY without -y: CONFIRM_REQUIRED" CONFIRM_REQUIRED
+run "ticket edit KEY,KEY -l -y" ok -- ticket edit "$BK1,$BK2" -j -l "$BLBL" -y
+[[ $(jq -r '.data.updated | length' <<<"$LAST") == 2 ]] && { PASS=$((PASS + 1)); echo "PASS bulk edit updated 2"; } || { FAIL=$((FAIL + 1)); echo "FAIL bulk edit updated 2"; }
+run "ticket edit KEY -q together fails" fail -- ticket edit "$BK1" -j -q "labels = $BLBL" -l x
+run "ticket edit -q -n too many fails" fail -- ticket edit -j -q "labels = $BLBL" -n 1 -l x -y
+code_is "ticket edit -q -n: TOO_MANY_TICKETS" TOO_MANY_TICKETS
+run "ticket move KEY,KEY no target fails" fail -- ticket move "$BK1,$BK2" -j
+run "ticket move KEY,KEY -y" ok -- ticket move "$BK1,$BK2" "In Progress" -j -y
+run "ticket move -q -y" ok -- ticket move -j -q "labels = $BLBL" Done -y
+# A partial failure is ok:true with one failed entry, and exit 1.
+out=$("${J[@]}" ticket move "$BK1,ZZZNOPE9-1" "To Do" -j -y 2>/dev/null); code=$?
+if [[ $code == 1 && $(jq -r '"\(.ok) \(.data.updated | length) \(.data.failed | length)"' <<<"$out") == "true 1 1" ]]; then
+  PASS=$((PASS + 1)); echo "PASS ticket move KEY,missing partly fails"
+else
+  FAIL=$((FAIL + 1)); echo "FAIL ticket move KEY,missing partly fails (exit $code) $(head -c 300 <<<"$out")"
+fi
+run "ticket move all fail" fail -- ticket move "$BK1,ZZZNOPE9-1" "No such status zz" -j -y
+code_is "ticket move all fail: BULK_FAILED" BULK_FAILED
+run "ticket delete (bulk 1)" ok -- ticket delete "$BK1" -j -y
+[[ $(jq -r '.ok' <<<"$LAST") == true ]] && BK1=""
+run "ticket delete (bulk 2)" ok -- ticket delete "$BK2" -j -y
+[[ $(jq -r '.ok' <<<"$LAST") == true ]] && BK2=""
 # Delete
 run "ticket delete without -y fails" fail -- ticket delete "$KEY" -j </dev/null
 if [[ -n $SUB ]]; then

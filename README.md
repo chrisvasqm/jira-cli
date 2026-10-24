@@ -81,8 +81,8 @@ The agent adds `--json` to each command, so it reads exact data and stable error
 | `jira filter list`                    | Saved filters you own or marked as favourite (`-n, --limit <n>`, 50)          |
 | `jira ticket view <KEY>`              | Fields, description and latest comments (`-n, --comments <0-100>`, 5)         |
 | `jira ticket create`                  | New ticket (`-s, --summary` is required)                                      |
-| `jira ticket edit <KEY>`              | Change only the fields you pass                                               |
-| `jira ticket move <KEY> [target]`     | Change the status; with no target, list the allowed moves                     |
+| `jira ticket edit <KEY>`              | Change only the fields you pass (several: `KEY,KEY` or `-q`)                  |
+| `jira ticket move <KEY> [target]`     | Change the status (no target: list moves; several: `KEY,KEY` or `-q`)         |
 | `jira ticket history <KEY>`           | Change history, newest first: who changed which field (`-n, --limit <n>`, 20) |
 | `jira ticket rank <KEY...>`           | Backlog order: put tickets before (`-bf`) or after (`-af`) another ticket     |
 | `jira ticket delete <KEY>`            | Delete a ticket (`-w, --with-subtasks` also deletes sub-tasks)                |
@@ -110,7 +110,7 @@ The agent adds `--json` to each command, so it reads exact data and stable error
 | `jira sprint list`                    | A board's sprints (`-se, --state open\|active\|future\|closed\|all`, open)    |
 | `jira sprint view [id]`               | A sprint (default: the active sprint; `SPRINT_AMBIGUOUS` if several)          |
 | `jira sprint create`                  | New future sprint (`-na, --name` is required, at most 30 characters)          |
-| `jira sprint edit <id>`               | Change only the fields you pass                                               |
+| `jira sprint edit <id>`               | Change only the fields you pass (several: `KEY,KEY` or `-q`)                  |
 | `jira sprint start <id>`              | Start a future sprint (default: now, for two weeks)                           |
 | `jira sprint close <id>`              | Close the active sprint; unfinished tickets go back to the backlog            |
 | `jira sprint delete <id>`             | Delete a sprint; its tickets go back to the backlog                           |
@@ -166,6 +166,11 @@ The agent adds `--json` to each command, so it reads exact data and stable error
 - **Reports** use the configured board, or `-b, --board <id>`. `flow` looks back `-da, --days <n>` (30); `flow` and `workload` take `-n, --limit <n>`. Cycle time runs from the first "in progress" status to done; lead time from created to done.
 - **Project metadata:** `component list` and `version list` use the configured project, or `-k, --project <KEY>`. Use `field list` to find a custom field id, e.g. `jira field list points`.
 - **Users:** `user search` takes `-k, --project <KEY>` to list only people who can be assigned tickets in that project. No match prints an empty list. `user view` shows the account id, email (when the profile shows it), time zone and status; a name that matches several people fails with `USER_AMBIGUOUS`.
+- **Several tickets (`ticket edit`, `ticket move`):** pass a comma-separated key list (`jira ticket edit KAN-1,KAN-2 -l urgent -p High`, `jira ticket move KAN-1,KAN-2 Done`), or pick tickets with `-q, --jql <query>` (joined with AND to your project; `jira ticket move -q 'labels = urgent' Done`). Not both.
+  - With `-q`, `-n, --limit <n>` (default 50, at most 200) caps the selection: a query that matches more fails with `TOO_MANY_TICKETS`, one that matches none with `NO_TICKETS`.
+  - It lists the tickets and asks first; `-y, --yes` skips the question. With no terminal, it fails with `CONFIRM_REQUIRED` unless `-y`.
+  - Each ticket is changed on its own. A failure does not stop the others: the output lists `updated` and `failed` (`key`, `code`, `message`) and the exit code is 1. If every ticket fails, the error is `BULK_FAILED`.
+  - `move` needs a target with several tickets. One key works as before: no question, same output.
 - **Move targets:** a status name, a transition name or id, or a board column. Case does not matter.
 - **History:** each entry shows who changed what and when, one `field: from → to` line per field. Long values are cut to 60 characters; `--json` keeps them whole, with `null` for an empty value.
 - **Rank:** `jira ticket rank KAN-5 KAN-6 -bf KAN-2` puts KAN-5, then KAN-6, right before KAN-2; `-af, --after <KEY>` puts them right after. Pass exactly one of `-bf, --before` and `-af, --after`, at most 50 tickets. If Jira ranks only some of them, the command fails with `RANK_FAILED` and lists each failed ticket.
