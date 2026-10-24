@@ -119,8 +119,8 @@ Every feature or fix PR ships a release.
    - `pnpm bump minor` for a new command or visible feature;
    - `pnpm bump patch` for fixes only;
    - `pnpm bump major` for a breaking change.
-2. **Write the release notes in the PR description** between the `<!-- release-notes -->` markers. The [PR template](.github/pull_request_template.md) has them. Write English first, then Español, in plain non-technical language: what users can now do, and how to install. The notes live only on GitHub, in the PR and the release.
+2. **Write a clear squash commit subject** (the PR title), such as "Add ticket delete". The release notes list the subjects of every commit since the previous release.
 3. **After the merge, run `pnpm release` on an up-to-date `main`**, before the next code PR merges. Docs-only merges in between are fine.
    - It needs `gh auth login` with push access.
-   - It runs `pnpm check`, packs the CLI, tags the commit, and creates the GitHub release with the notes from the PR, `jira-cli-X.Y.Z.tgz` and `jira-cli.tgz` (the latest-version link).
+   - It runs `pnpm check`, packs the CLI, tags the commit, and creates the GitHub release with notes built from the commit subjects, `jira-cli-X.Y.Z.tgz` and `jira-cli.tgz` (the latest-version link).
    - If it fails after tagging, fix the cause and run it again.

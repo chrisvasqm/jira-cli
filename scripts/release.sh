@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Publish the version in package.json as a GitHub release tagged v<version>.
 # Run on synced main right after the PR that bumped the version merged.
-# The release notes come from that PR's description, between <!-- release-notes --> markers.
+# The release notes list the commit subjects since the previous tag.
 # Safe to rerun: reuses a tag already on HEAD and re-uploads a missing asset.
 # usage: pnpm release
 set -euo pipefail
@@ -28,13 +28,26 @@ shipped_changes=$(git diff --name-only "$bump_commit" HEAD -- src package.json p
 [ -z "$shipped_changes" ] ||
   die "code changed after the $tag bump ($shipped_changes); those changes need their own version bump"
 
+# Notes: one bullet per commit since the previous tag (squash subjects end with "(#PR)"), then install steps.
 notes="$out/notes.md"
-gh api "repos/{owner}/{repo}/commits/$bump_commit/pulls" --jq '.[0].body // ""' |
-  tr -d '\r' |
-  awk '/<!-- \/release-notes -->/ { on = 0 } on { print } /<!-- release-notes -->/ { on = 1 }' >"$notes" ||
-  die "could not read the PR for $bump_commit"
-[ -s "$notes" ] || die "the PR that bumped to $tag has no notes between <!-- release-notes --> markers"
-grep -qF "releases/download/$tag/$asset_name" "$notes" || die "the $tag notes must link releases/download/$tag/$asset_name"
+previous=$(git describe --tags --abbrev=0 "$bump_commit^" 2>/dev/null || true)
+changes=$(git log --no-merges --format='- %s' "${previous:+$previous..}HEAD")
+[ -n "$changes" ] || die "no commits since $previous"
+cat >"$notes" <<NOTES
+## What's changed
+
+$changes
+
+## Install or update
+
+You need [Node.js](https://nodejs.org) 24 or newer.
+
+\`\`\`sh
+curl -fsSL https://raw.githubusercontent.com/chrisvasqm/jira-cli/main/install.sh | sh
+\`\`\`
+
+To install exactly this version: \`npm install -g https://github.com/chrisvasqm/jira-cli/releases/download/$tag/$asset_name\`
+NOTES
 if tagged=$(git rev-parse -q --verify "refs/tags/$tag^{commit}"); then
   [ "$tagged" = "$head" ] || die "$tag exists on another commit; bump the version in the PR first"
 fi
