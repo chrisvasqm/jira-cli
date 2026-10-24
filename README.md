@@ -73,6 +73,7 @@ The CLI looks for a config in this order:
   - `--priority <name>`
   - `--assignee me|none|<email, name or accountId>`
   - `--add-label` (repeatable)
+  - `--sprint active|<id>|<name>|none`: put the ticket in a sprint of the configured board, or back in the backlog with `none`
   - `create` also takes `--type` (default Task), `--parent <KEY>` and `--project <KEY>`.
   - `edit` also takes `--remove-label`.
 - **Move targets:** a status name, a transition name or id, or a board column. Case does not matter.
