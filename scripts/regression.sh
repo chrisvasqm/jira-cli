@@ -73,6 +73,8 @@ run "ticket edit -p" soft -- ticket edit "$KEY" -j -p Medium
 run "ticket edit -sp active" soft -- ticket edit "$KEY" -j -sp active
 run "ticket edit -sp none" soft -- ticket edit "$KEY" -j -sp none
 run "ticket move (list)" ok -- ticket move "$KEY" -j
+run "ticket history -n" ok -- ticket history "$KEY" -j -n 5
+run "ticket history -n 0 fails" fail -- ticket history "$KEY" -j -n 0
 
 # Rank: a second throwaway ticket to rank against
 run "ticket create (rank target)" ok -- ticket create -j -s "Regression rank target (delete me)"
