@@ -221,8 +221,8 @@ Every feature or fix PR ships a release.
    - `pnpm bump minor` for a new command or visible feature;
    - `pnpm bump patch` for fixes only;
    - `pnpm bump major` for a breaking change.
-2. **Write a clear squash commit subject** (the PR title), such as "Add ticket delete". The release notes list the subjects of every commit since the previous release.
+2. **Write a clear squash commit subject** (the PR title), such as "Add ticket delete", and put its Spanish version in an `Es:` trailer of the squash commit body, such as `Es: Agrega ticket delete` (`gh pr merge --squash --body "Es: …"`). The release notes have an English section built from the subjects and a Spanish section built from the trailers; a commit without a trailer repeats its English subject there.
 3. **After the merge, run `pnpm release` on an up-to-date `main`**, before the next code PR merges. Docs-only merges in between are fine.
    - It needs `gh auth login` with push access.
-   - It runs `pnpm check`, packs the CLI, tags the commit, and creates the GitHub release with notes built from the commit subjects, the checksum file `jira-cli.tgz.sha256`, `jira-cli-X.Y.Z.tgz` and `jira-cli.tgz` (the latest-version link).
+   - It runs `pnpm check`, packs the CLI, tags the commit, and creates the GitHub release with English and Spanish notes built from the commit subjects and `Es:` trailers, the checksum file `jira-cli.tgz.sha256`, `jira-cli-X.Y.Z.tgz` and `jira-cli.tgz` (the latest-version link).
    - If it fails after tagging, fix the cause and run it again. A rerun also finishes a draft or partial release.

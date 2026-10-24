@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Publish the version in package.json as a GitHub release tagged v<version>.
 # Run on synced main right after the PR that bumped the version merged.
-# The release notes list the commit subjects since the previous tag.
+# The release notes list the commit subjects since the previous tag, in English and (from "Es:" trailers) Spanish.
 # Safe to rerun: reuses a tag already on HEAD and re-uploads a missing asset.
 # usage: pnpm release
 set -euo pipefail
@@ -28,25 +28,78 @@ shipped_changes=$(git diff --name-only "$bump_commit" HEAD -- src package.json p
 [ -z "$shipped_changes" ] ||
   die "code changed after the $tag bump ($shipped_changes); those changes need their own version bump"
 
-# Notes: one bullet per commit since the previous tag (squash subjects end with "(#PR)"), then install steps.
+# Notes: one bullet per commit since the previous tag (squash subjects end with "(#PR)"), in English and Spanish.
+# The Spanish line comes from the commit's "Es:" trailer; a commit without one falls back to its English subject.
+# Each language gets its own install steps; the SHA-256 lines are added once the tarball exists.
 notes="$out/notes.md"
+english="$out/english.md"
+spanish="$out/spanish.md"
 previous=$(git describe --tags --abbrev=0 "$bump_commit^" 2>/dev/null || true)
-changes=$(git log --no-merges --format='- %s' "${previous:+$previous..}HEAD")
+range="${previous:+$previous..}HEAD"
+changes=$(git log --no-merges --format='- %s' "$range")
 [ -n "$changes" ] || die "no commits since $previous"
-cat >"$notes" <<NOTES
-## What's changed
+cambios=""
+missing=0
+while IFS=$'\x1f' read -r subject es; do
+  # A trailer ends with its own newline, which leaves an empty line between commits.
+  [ -n "$subject" ] || continue
+  pr=$(grep -oE ' \(#[0-9]+\)$' <<<"$subject" || true)
+  if [ -z "$es" ]; then
+    es="$subject"
+    missing=$((missing + 1))
+  else
+    es="$es$pr"
+  fi
+  cambios+="- $es"$'\n'
+done < <(git log --no-merges --format='%s%x1f%(trailers:key=Es,valueonly,separator=%x20)' "$range")
+# Strip the last newline here: $'…' quoting does not work inside the heredoc below.
+cambios=${cambios%$'\n'}
+[ "$missing" -eq 0 ] || echo "release: $missing commit(s) have no Es: trailer; their Spanish line repeats the English subject" >&2
+cat >"$english" <<NOTES
+## English
+
+### What's changed
 
 $changes
 
-## Install or update
+### How to install or update
 
-You need [Node.js](https://nodejs.org) 24 or newer.
+You need [Node.js](https://nodejs.org) 24 or newer. Then run:
 
 \`\`\`sh
 curl -fsSL https://raw.githubusercontent.com/chrisvasqm/jira-cli/main/install.sh | sh
 \`\`\`
 
+On Windows (PowerShell):
+
+\`\`\`powershell
+irm https://raw.githubusercontent.com/chrisvasqm/jira-cli/main/install.ps1 | iex
+\`\`\`
+
 To install exactly this version: \`npm install -g https://github.com/chrisvasqm/jira-cli/releases/download/$tag/$asset_name\`
+NOTES
+cat >"$spanish" <<NOTES
+## Español
+
+### Cambios
+
+$cambios
+
+### Cómo instalar o actualizar
+
+Necesitas [Node.js](https://nodejs.org) 24 o una versión más nueva. Después ejecuta:
+
+\`\`\`sh
+curl -fsSL https://raw.githubusercontent.com/chrisvasqm/jira-cli/main/install.sh | sh
+\`\`\`
+
+En Windows (PowerShell):
+
+\`\`\`powershell
+irm https://raw.githubusercontent.com/chrisvasqm/jira-cli/main/install.ps1 | iex
+\`\`\`
+
+Para instalar exactamente esta versión: \`npm install -g https://github.com/chrisvasqm/jira-cli/releases/download/$tag/$asset_name\`
 NOTES
 if tagged=$(git rev-parse -q --verify "refs/tags/$tag^{commit}"); then
   [ "$tagged" = "$head" ] || die "$tag exists on another commit; bump the version in the PR first"
@@ -90,10 +143,16 @@ asset="$out/$asset_name"
 # Same file under a fixed name, so releases/latest/download/jira-cli.tgz always installs the newest version.
 stable="$out/jira-cli.tgz"
 cp "$asset" "$stable"
-# Checksum of the stable asset, which install.sh verifies before installing.
+# Checksum of the stable asset, which install.sh and install.ps1 verify before installing.
 checksum="$out/jira-cli.tgz.sha256"
 (cd "$out" && shasum -a 256 jira-cli.tgz >"$checksum")
-printf '\nSHA-256 of `%s`: `%s`\n' "$asset_name" "$(cut -d' ' -f1 "$checksum")" >>"$notes"
+sha=$(cut -d' ' -f1 "$checksum")
+{
+  cat "$english"
+  printf '\nSHA-256 of `%s`: `%s`\n\n---\n\n' "$asset_name" "$sha"
+  cat "$spanish"
+  printf '\nSHA-256 de `%s`: `%s`\n' "$asset_name" "$sha"
+} >"$notes"
 
 git rev-parse -q --verify "refs/tags/$tag" >/dev/null || git tag -a "$tag" -m "jira-cli $tag"
 git push -q origin "$tag"
