@@ -1,5 +1,6 @@
 import { createRequire } from "node:module";
 import { CommanderError } from "commander";
+import { registerAttachment } from "./commands/attachment/index.js";
 import { registerBoard } from "./commands/board/index.js";
 import { registerComment } from "./commands/comment/index.js";
 import { registerComponent } from "./commands/component/index.js";
@@ -39,6 +40,7 @@ registerBoard(program);
 registerTicket(program);
 registerSprint(program);
 registerComment(program);
+registerAttachment(program);
 registerFilter(program);
 registerWorklog(program);
 registerLink(program);
