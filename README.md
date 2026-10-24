@@ -1,68 +1,126 @@
 # jira-cli
 
-A small command-line tool for working with Jira from the terminal as an alternative to the official JIRA MCP to consume less tokens while using agents.
+`jira` is a small command-line tool for Jira Cloud. Use it from the terminal, or let an AI agent use it instead of the Jira MCP server, for far fewer tokens.
 
 ## Install
 
-You need Node.js 24 or newer. Install or update to the latest release:
+You need Node.js 24 or newer. To install the latest release, or update to it, run:
 
 ```sh
 npm install -g https://github.com/chrisvasqm/jira-cli/releases/latest/download/jira-cli.tgz
-jira setup   # in the directory (project) that should use this Jira board
 ```
 
 Each [release](https://github.com/chrisvasqm/jira-cli/releases) also lists the command for that exact version.
 
-### Agent skill
-
-Teach your AI agent (Claude Code, Codex, Cursor and others) to use the CLI:
+To teach your AI agent (Claude Code, Codex, Cursor and others) to use the CLI, run:
 
 ```sh
 npx skills add chrisvasqm/jira-cli
 ```
 
-## Getting started (development)
+## Set up
 
-```sh
-pnpm install
-pnpm dev setup      # prompts for Jira URL, email, API token, board
-pnpm check          # typecheck + build + lint + format
-```
+Run `jira setup` in the project directory. It asks for:
 
-`setup` writes `.jira-cli.json` in the current directory (file mode 600). Keep it out of git; the command warns when it is not in `.gitignore`. Each directory can hold its own config, so different projects can point at different Jira sites or boards. `--global` writes `~/.config/jira-cli/config.json` as a fallback.
+- your Jira URL (`https://…`);
+- your Atlassian email;
+- an [API token](https://id.atlassian.com/manage/api-tokens);
+- a board;
+- a project key.
 
-Config lookup order: `--config <path>`, nearest `.jira-cli.json` walking up from the current directory, then the global file.
+It saves them to `.jira-cli.json` with file mode 600. Add `--global` to save to `~/.config/jira-cli/config.json` instead, or pass `--config <path>` to choose the file.
 
-Create an API token at https://id.atlassian.com/manage/api-tokens.
+- Keep the file out of git, because it holds your token. `setup` warns you when git does not ignore it.
+- Each directory can have its own config, so different projects can use different Jira sites or boards.
+
+The CLI looks for a config in this order:
+
+1. `--config <path>`;
+2. the nearest `.jira-cli.json`, walking up from the current directory;
+3. the global file.
 
 ## Commands
 
-| Command                               | What it does                                                                                                                                                                                                                 |
-| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `jira setup`                          | Prompt for Jira URL, email, API token and board; write `.jira-cli.json`                                                                                                                                                      |
-| `jira board [view [id]]`              | List tickets on a board (default: the configured one) grouped by column. Sprint boards default to the active sprint(s). Filters: `--sprint active\                                                                           |
-| `jira board list`                     | All boards you can see; `*` marks the configured one                                                                                                                                                                         |
-| `jira board use <id>`                 | Make a board (and its project) the default in your config                                                                                                                                                                    |
-| `jira ticket create`                  | Create a ticket: `--summary` (required), `--type` (default Task), `--parent <KEY>`, `--project <KEY>` (default from config), plus the `ticket edit` field flags except `--remove-label`                                      |
-| `jira ticket view <KEY>`              | Show a ticket: fields, description (ADF rendered as text) and the latest comments. `--comments <n>` (default 5, 0 hides them)                                                                                                |
-| `jira ticket edit <KEY>`              | Change only the fields you pass: `--summary`, `--description <text>` / `--description-file <path\|->`, `--priority <name>`, `--assignee me\|none\|<email, name or accountId>`, `--add-label` / `--remove-label` (repeatable) |
-| `jira ticket move <KEY> [target]`     | Move to a status, transition name/id or board column. Without a target, list the allowed moves. Errors: `NO_TRANSITION`, `TRANSITION_AMBIGUOUS` (details list the options)                                                   |
-| `jira ticket delete <KEY>`            | Delete a ticket after confirmation (`--yes` skips; no terminal → `CONFIRM_REQUIRED`). `--with-subtasks` also deletes its sub-tasks                                                                                           |
-| `jira comment list <KEY>`             | All comments, oldest first. `--limit <n>` (default 50)                                                                                                                                                                       |
-| `jira comment add <KEY> [text]`       | Add a comment. `--file <path>` reads it from a file, `--file -` from stdin. Blank lines split paragraphs; ``` fences make code blocks                                                                                        |
-| `jira comment edit <KEY> <id> [text]` | Replace a comment's text (`--file <path\|->` works too)                                                                                                                                                                      |
-| `jira comment delete <KEY> <id>`      | Delete a comment. Asks for "yes" in a terminal; without one (agents, scripts) it fails with `CONFIRM_REQUIRED` unless you pass `--yes`                                                                                       |
+| Command                               | What it does                                                      |
+| ------------------------------------- | ----------------------------------------------------------------- |
+| `jira board [view [id]]`              | Tickets on a board (default: yours), grouped by column            |
+| `jira board list`                     | Boards you can see; `*` marks yours                               |
+| `jira board use <id>`                 | Make a board and its project the default                          |
+| `jira ticket view <KEY>`              | Fields, description and latest comments (`--comments <0-100>`, 5) |
+| `jira ticket create`                  | New ticket (`--summary` is required)                              |
+| `jira ticket edit <KEY>`              | Change only the fields you pass                                   |
+| `jira ticket move <KEY> [target]`     | Change the status; with no target, list the allowed moves         |
+| `jira ticket delete <KEY>`            | Delete a ticket (`--with-subtasks` also deletes its sub-tasks)    |
+| `jira comment list <KEY>`             | All comments, oldest first (`--limit <n>`, 50)                    |
+| `jira comment add <KEY> [text]`       | Add a comment                                                     |
+| `jira comment edit <KEY> <id> [text]` | Replace a comment's text                                          |
+| `jira comment delete <KEY> <id>`      | Delete a comment                                                  |
+| `jira setup`                          | Create the config (see [Set up](#set-up))                         |
+
+- **Board filters:**
+  - `--status <column or status>`
+  - `--assignee me|none|<email, name or accountId>`
+  - `--sprint active|all|<id>`
+  - `--jql <extra JQL>`
+  - `--order-by <JQL>`
+  - `--limit <n>` (default 100)
+
+  Sprint boards show the active sprints by default.
+
+- **Ticket fields (`create` and `edit`):**
+  - `--summary`
+  - `--description <text>`, or `--description-file <path>` (`-` reads stdin). On `edit`, `--description ""` clears the description.
+  - `--priority <name>`
+  - `--assignee me|none|<email, name or accountId>`
+  - `--add-label` (repeatable)
+  - `create` also takes `--type` (default Task), `--parent <KEY>` and `--project <KEY>`.
+  - `edit` also takes `--remove-label`.
+- **Move targets:** a status name, a transition name or id, or a board column. Case does not matter.
+- **Comment text:** pass it inline, or use `--file <path>` (`-` reads stdin).
+  - A blank line starts a new paragraph.
+  - A single newline is a line break.
+  - Lines between ` ``` ` fences become a code block.
+- **Deletes** ask you to type "yes". `--yes` (`-y`) skips the question. With no terminal (scripts, agents), a delete without `--yes` fails with `CONFIRM_REQUIRED`.
+
+Run `jira <command> --help` for every option.
 
 ## Output
 
-Every command prints a human-readable result by default. Add `--json` for `{ "ok": true, "data": ... }` or `{ "ok": false, "error": { "code", "message", "details" } }` with a non-zero exit code on failure.
+Every command prints readable text by default. Add `--json` to get one line on stdout:
 
-Exit codes: `0` success, `1` Jira, network or config error, `2` bad usage or missing input, `130` cancelled with Ctrl+C.
+- on success: `{ "ok": true, "data": … }`
+- on failure: `{ "ok": false, "error": { "code", "message", "details" } }`
+
+Exit codes:
+
+- `0`: success
+- `2`: bad usage or missing input
+- `130`: cancelled with Ctrl+C
+- `1`: any other error
+
+The [agent skill](skills/jira-cli/SKILL.md) lists the data shapes and every error code.
+
+## Development
+
+```sh
+pnpm install
+pnpm dev board      # run from source
+pnpm check          # type-check, bundle, lint, format check
+pnpm add -g .       # once: use your local build as the global `jira` (then `pnpm build` after changes)
+```
+
+[AGENTS.md](AGENTS.md) covers the layout and the repo rules.
 
 ## Releasing
 
-Every feature or fix PR ships a release:
+Every feature or fix PR ships a release.
 
-1. In the PR, bump the version: `pnpm bump minor` for a new command or visible feature, `pnpm bump patch` for fixes only. `1.0.0` comes when the roadmap is complete.
-2. In the same PR, add `release-notes/vX.Y.Z.md`: English first, then Español, in plain non-technical language (what users can now do, how to install).
-3. After the PR merges, sync `main` and run `pnpm release` before the next code PR merges (docs-only merges in between are fine). It needs `gh` logged in (`gh auth login`) with push access. If it fails after tagging, fix the cause and rerun it. It checks the tree, runs `pnpm check`, packs the CLI, tags the merge commit, and creates the GitHub release with the notes and the install tarball.
+1. **Bump the version in the PR:**
+   - `pnpm bump minor` for a new command or visible feature;
+   - `pnpm bump patch` for fixes only;
+   - `pnpm bump major` for a breaking change.
+2. **Add `release-notes/vX.Y.Z.md` in the same PR.** Write English first, then Español, in plain non-technical language: what users can now do, and how to install.
+3. **After the merge, run `pnpm release` on an up-to-date `main`**, before the next code PR merges. Docs-only merges in between are fine.
+   - It needs `gh auth login` with push access.
+   - It runs `pnpm check`, packs the CLI, tags the commit, and creates the GitHub release with the notes, `jira-cli-X.Y.Z.tgz` and `jira-cli.tgz` (the latest-version link).
+   - If it fails after tagging, fix the cause and run it again.
