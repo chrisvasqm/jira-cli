@@ -77,8 +77,8 @@ The agent adds `--json` to each command, so it reads exact data and stable error
 | `jira board [view [id]]`              | Tickets on a board (default: yours), grouped by column                        |
 | `jira board list`                     | Boards you can see; `*` marks yours                                           |
 | `jira board use <id>`                 | Make a board and its project the default                                      |
-| `jira ticket list`                    | Search tickets (default: not done in your project, latest updated first)   |
-| `jira filter list`                    | Saved filters you own or marked as favourite (`-n, --limit <n>`, 50)       |
+| `jira ticket list`                    | Search tickets (default: not done in your project, latest updated first)      |
+| `jira filter list`                    | Saved filters you own or marked as favourite (`-n, --limit <n>`, 50)          |
 | `jira ticket view <KEY>`              | Fields, description and latest comments (`-n, --comments <0-100>`, 5)         |
 | `jira ticket create`                  | New ticket (`-s, --summary` is required)                                      |
 | `jira ticket edit <KEY>`              | Change only the fields you pass                                               |
